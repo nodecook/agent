@@ -48,7 +48,6 @@ pub async fn connect_server(
                     Payload::Binary(data) => String::from_utf8_lossy(&data).to_string(),
                 };
                 error!("Connect server error: {}", data);
-                std::process::exit(1);
             }
             .boxed()
         })
