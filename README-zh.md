@@ -20,8 +20,7 @@
 ### 前置依赖
 
 - 安装了 Docker 或 Docker Compose。
-- 具有公共 IP 地址的服务器或 NodeCook 服务器可以访问代理程序。
-- 防火墙规则允许 NodeCook 服务器访问代理程序，默认端口为`4000`。
+- 防火墙规则允许 Agent 访问服务器。
 
 ### docker compose（推荐）
 
@@ -41,10 +40,6 @@ docker run -d --user=root --name nodecook-agent -e NCA_API_KEY=your_api_key --re
 
 有一些环境变量可以用来配置代理程序。
 
-### NCA_PORT
-
-代理监听的端口，默认为 `4000`。
-
 ### NCA_API_KEY
 
 您从 [NodeCook](https://www.nodecook.com/dashboard/apikey) 网站获取的 api 密钥。
@@ -52,10 +47,6 @@ docker run -d --user=root --name nodecook-agent -e NCA_API_KEY=your_api_key --re
 ### NCA_DEBUG
 
 如果设置为 `true`，代理程序将打印调试信息，默认为 `false`。
-
-### NCA_ENDPOINT
-
-代理访问的端点，默认为 `http://your_server_ip:${NCA_PORT}`，如果您运行在代理后面，您应该将其设置为您的公共地址。
 
 ### NCA_IPV4_ONLY
 
