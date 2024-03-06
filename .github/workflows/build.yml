@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - dev
 jobs:
   build:
     permissions:
@@ -22,7 +23,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
           images: |
             ghcr.io/${{ github.repository }}
       - name: Build and push Docker images
