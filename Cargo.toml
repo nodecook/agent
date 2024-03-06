@@ -1,13 +1,12 @@
 [package]
 name = "nodecook-agent"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = { version = "0.7.3" }
-tokio = { version = "1", features = ["rt-multi-thread", "signal"] }
+tokio = { version = "1", features = ["rt-multi-thread", "signal", "macros"] }
 serde_json = "1.0.111"
 surge-ping = "0.8.0"
 tracing = "0.1.40"
@@ -15,10 +14,10 @@ tracing-subscriber = "0.3.18"
 clap = { version = "4.4.14", features = ["derive", "env"] }
 log = "0.4.20"
 reqwest = { version = "0.11", features = ["json"] }
-tokio-cron-scheduler = "0.9.4"
 serde = { version = "1.0.195", features = ["derive"] }
-socketioxide = "0.10.0"
+rust_socketio = { version = "0.4.2", features = ["async"] }
 rand = "0.8.5"
 hickory-resolver = "0.24.0"
 tracert = "0.7"
 url = "2.5.0"
+futures-util = "0.3.30"

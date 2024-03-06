@@ -3,33 +3,27 @@ use clap::Parser;
 #[derive(Clone, Parser)]
 #[command(
     name = "NodeCookAgent",
-    version = "0.1.0",
-    author = "long2ice",
+    version = env!("CARGO_PKG_VERSION"),
+    author = "NodeCook <dev@nodecook.com>",
     about = "Agent for NodeCook to run jobs"
 )]
 pub struct Cli {
     /// IPv4 server address
-    #[arg(short = '4', long, env = "NCA_IPV4_SERVER")]
-    pub ipv4_server: Option<String>,
+    #[arg(short = '4', long, env = "NCA_V4_SERVER")]
+    pub v4_server: Option<String>,
     /// IPv6 server address
-    #[arg(short = '6', long, env = "NCA_IPV6_SERVER")]
-    pub ipv6_server: Option<String>,
+    #[arg(short = '6', long, env = "NCA_V6_SERVER")]
+    pub v6_server: Option<String>,
     /// IPv4 only mode
-    #[arg(long, default_value_t = false, env = "NCA_IPV4_ONLY")]
-    pub ipv4_only: bool,
+    #[arg(long, default_value_t = false, env = "NCA_V4_ONLY")]
+    pub v4_only: bool,
     /// IPv6 only mode
-    #[arg(long, default_value_t = false, env = "NCA_IPV6_ONLY")]
-    pub ipv6_only: bool,
-    /// Port to listen on
-    #[arg(short, long, default_value_t = 4000, env = "NCA_PORT")]
-    pub port: u16,
+    #[arg(long, default_value_t = false, env = "NCA_V6_ONLY")]
+    pub v6_only: bool,
     /// API key comes from nodecook to know this node belongs to you
     #[arg(short, long, env = "NCA_API_KEY")]
     pub api_key: String,
     /// Enable debug mode
     #[arg(short, long, default_value_t = false, env = "NCA_DEBUG")]
     pub debug: bool,
-    /// Endpoint for agent to access, default is host ip:port, if you are behind proxy, you should set this to your public address
-    #[arg(short, long, env = "NCA_ENDPOINT")]
-    pub endpoint: Option<String>,
 }

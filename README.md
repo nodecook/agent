@@ -20,8 +20,7 @@ First of all, you need to get the **api key** from the [NodeCook](https://www.no
 ### Prerequisites
 
 - Docker or Docker Compose installed.
-- A server with public ip address or the NodeCook server can access the agent.
-- Firewall rules to allow the NodeCook server can access the agent, default port is `4000`.
+- Firewall rules to allow Agent to access the server.
 
 ### docker compose (recommended)
 
@@ -41,10 +40,6 @@ docker run -d --user=root --name nodecook-agent -e NCA_API_KEY=your_api_key --re
 
 There are some environment variables you can use to configure the agent.
 
-### NCA_PORT
-
-The port the agent listens on. Default is `4000`.
-
 ### NCA_API_KEY
 
 The api key you get from the [NodeCook](https://www.nodecook.com/dashboard/apikey) website.
@@ -53,15 +48,11 @@ The api key you get from the [NodeCook](https://www.nodecook.com/dashboard/apike
 
 If set to `true`, the agent will print debug information. Default is `false`.
 
-### NCA_ENDPOINT
-
-Endpoint for agent to access, default is `http://your_server_ip:${NCA_PORT}`, if you are behind proxy, you should set this to your public address.
-
-### NCA_IPV4_ONLY
+### NCA_V4_ONLY
 
 If set to `true`, the agent will only use ipv4 to access the server. Default is `false`.
 
-### NCA_IPV6_ONLY
+### NCA_V6_ONLY
 
 If set to `true`, the agent will only use ipv6 to access the server. Default is `false`.
 
