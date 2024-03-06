@@ -8,3 +8,5 @@ services:
     user: root
     environment:
       - NCA_API_KEY=${NCA_API_KEY}
+      - NCA_V4_SERVER=${NCA_V4_SERVER}
+      - NCA_V6_SERVER=${NCA_V6_SERVER}

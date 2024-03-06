@@ -48,11 +48,11 @@ The api key you get from the [NodeCook](https://www.nodecook.com/dashboard/apike
 
 If set to `true`, the agent will print debug information. Default is `false`.
 
-### NCA_IPV4_ONLY
+### NCA_V4_ONLY
 
 If set to `true`, the agent will only use ipv4 to access the server. Default is `false`.
 
-### NCA_IPV6_ONLY
+### NCA_V6_ONLY
 
 If set to `true`, the agent will only use ipv6 to access the server. Default is `false`.
 

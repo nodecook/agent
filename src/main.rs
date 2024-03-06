@@ -23,14 +23,14 @@ async fn main() {
     }
     let collector = fmt().with_max_level(level).finish();
     tracing::subscriber::set_global_default(collector).unwrap();
-    if args.ipv4_only && args.ipv6_only {
+    if args.v4_only && args.v6_only {
         error!("ipv4_only and ipv6_only can't be true at the same time");
         std::process::exit(1);
     }
     let mut v4_ok = false;
     let mut v6_ok = false;
-    if !args.ipv4_only {
-        let server = args.ipv6_server.unwrap_or_else(|| V6_SERVER.to_string());
+    if !args.v4_only {
+        let server = args.v6_server.unwrap_or_else(|| V6_SERVER.to_string());
         let ret = connect_server(server, args.api_key.clone()).await;
         if ret.is_ok() {
             v4_ok = true
@@ -38,8 +38,8 @@ async fn main() {
             debug!("connect ipv6 server failed: {}", ret.err().unwrap());
         }
     }
-    if !args.ipv6_only {
-        let server = args.ipv4_server.unwrap_or_else(|| V4_SERVER.to_string());
+    if !args.v6_only {
+        let server = args.v4_server.unwrap_or_else(|| V4_SERVER.to_string());
         let ret = connect_server(server, args.api_key).await;
         if ret.is_ok() {
             v6_ok = true
