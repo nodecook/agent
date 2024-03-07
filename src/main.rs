@@ -5,12 +5,14 @@ mod dns_resolve;
 mod errors;
 mod handlers;
 mod utils;
+use std::process::exit;
+
 use crate::constant::V4_SERVER;
 use crate::{cli::Cli, constant::V6_SERVER};
 
 use crate::client::connect_server;
 use clap::Parser;
-use tokio::signal;
+use tokio::sync::mpsc;
 use tracing::{debug, error, info, Level};
 use tracing_subscriber::fmt;
 
@@ -25,13 +27,17 @@ async fn main() {
     tracing::subscriber::set_global_default(collector).unwrap();
     if args.v4_only && args.v6_only {
         error!("ipv4_only and ipv6_only can't be true at the same time");
-        std::process::exit(1);
+        exit(1);
     }
+    let (tx, mut rx) = mpsc::channel::<String>(2);
     let mut v4_ok = false;
     let mut v6_ok = false;
     if !args.v4_only {
-        let server = args.v6_server.unwrap_or_else(|| V6_SERVER.to_string());
-        let ret = connect_server(server, args.api_key.clone()).await;
+        let server = args
+            .v6_server
+            .clone()
+            .unwrap_or_else(|| V6_SERVER.to_string());
+        let ret = connect_server(tx.clone(), "v4".to_string(), server, args.api_key.clone()).await;
         if ret.is_ok() {
             v4_ok = true
         } else {
@@ -39,8 +45,11 @@ async fn main() {
         }
     }
     if !args.v6_only {
-        let server = args.v4_server.unwrap_or_else(|| V4_SERVER.to_string());
-        let ret = connect_server(server, args.api_key).await;
+        let server = args
+            .v4_server
+            .clone()
+            .unwrap_or_else(|| V4_SERVER.to_string());
+        let ret = connect_server(tx.clone(), "v6".to_string(), server, args.api_key).await;
         if ret.is_ok() {
             v6_ok = true
         } else {
@@ -49,32 +58,18 @@ async fn main() {
     }
     if !v4_ok && !v6_ok {
         error!("connect ipv4 and ipv6 server failed, please check your network or try again later");
-        std::process::exit(1);
+        exit(1);
     }
     info!("Congratulations, you have successfully started the agent!");
 
-    shutdown_signal().await;
-}
-
-async fn shutdown_signal() {
-    let ctrl_c = async {
-        signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
-    };
-
-    #[cfg(unix)]
-    let terminate = async {
-        signal::unix::signal(signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
-    };
-
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-    tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
+    while let Some(server_type) = rx.recv().await {
+        if server_type == "v4" && v4_ok {
+            error!("ipv4 server disconnected, try to reconnect...");
+            exit(1);
+        }
+        if server_type == "v6" && v6_ok {
+            error!("ipv6 server disconnected, try to reconnect...");
+            exit(1);
+        }
     }
 }
