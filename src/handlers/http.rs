@@ -56,6 +56,7 @@ pub async fn http(payload: Payload, socket: SocketClient) -> Result<(), rust_soc
         let localhost_v4 = IpAddr::V4("0.0.0.0".parse().unwrap());
         client = reqwest::Client::builder()
             .local_address(localhost_v4)
+            .timeout(std::time::Duration::from_secs(10))
             .resolve(host, SocketAddr::new(ip.parse().unwrap(), port))
             .build()
             .unwrap();
@@ -63,6 +64,7 @@ pub async fn http(payload: Payload, socket: SocketClient) -> Result<(), rust_soc
         let localhost_v6 = IpAddr::V6("::".parse().unwrap());
         client = reqwest::Client::builder()
             .local_address(localhost_v6)
+            .timeout(std::time::Duration::from_secs(10))
             .resolve(host, SocketAddr::new(ip.parse().unwrap(), port))
             .build()
             .unwrap();
