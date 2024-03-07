@@ -4,6 +4,8 @@
 
 This is the agent program of [NodeCook](https://www.nodecook.com). It is responsible for run the jobs like ping, tcping, http, etc from the NodeCook server. Which is written in Rust and need only a few system resources.
 
+**Important: Please keep you agent up to date anytime!**
+
 ## Features
 
 - **Lightweight**: Only a few system resources are needed.

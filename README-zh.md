@@ -4,6 +4,8 @@
 
 这是 [NodeCook](https://www.nodecook.com) 的代理程序。它负责从 NodeCook 服务器运行 ping、tcping、http 等作业。它是用 Rust 编写的，只需要很少的系统资源。
 
+**重要提示: 任何时候请保持您的 agent 为最新版本!**
+
 ## 特性
 
 - **轻量级**：仅需要少量系统资源。
