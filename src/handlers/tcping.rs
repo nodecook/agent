@@ -9,7 +9,7 @@ use tokio::time;
 use tracing::debug;
 use tracing::error;
 
-pub async fn tcping(payload: Payload, socket: SocketClient) {
+pub async fn tcping(payload: Payload, socket: SocketClient) -> Result<(), rust_socketio::Error> {
     let data: Value = match payload {
         Payload::String(data) => serde_json::from_str(&data).unwrap(),
         Payload::Binary(data) => serde_json::from_slice(&data).unwrap(),
@@ -38,9 +38,8 @@ pub async fn tcping(payload: Payload, socket: SocketClient) {
                         "error": SocketIOError::ErrDNSLookupFailed,
                     }),
                 )
-                .await
-                .unwrap();
-            return;
+                .await?;
+            return Ok(());
         }
         res.unwrap()
             .iter()
@@ -69,8 +68,7 @@ pub async fn tcping(payload: Payload, socket: SocketClient) {
                             "seq": idx+1,
                         }),
                     )
-                    .await
-                    .unwrap();
+                    .await?;
             }
             Err(e) => {
                 error!("tcping {} failed: {}", ip.to_string(), e);
@@ -85,9 +83,9 @@ pub async fn tcping(payload: Payload, socket: SocketClient) {
                             "error": SocketIOError::ErrTCPingFailed,
                         }),
                     )
-                    .await
-                    .unwrap();
+                    .await?;
             }
         };
     }
+    Ok(())
 }

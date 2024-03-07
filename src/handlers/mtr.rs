@@ -8,7 +8,7 @@ use tracert::trace::Tracer;
 use tracing::debug;
 use tracing::error;
 
-pub async fn mtr(payload: Payload, socket: SocketClient) {
+pub async fn mtr(payload: Payload, socket: SocketClient) -> Result<(), rust_socketio::Error> {
     let data: Value = match payload {
         Payload::String(data) => serde_json::from_str(&data).unwrap(),
         Payload::Binary(data) => serde_json::from_slice(&data).unwrap(),
@@ -35,9 +35,8 @@ pub async fn mtr(payload: Payload, socket: SocketClient) {
                         "error": SocketIOError::ErrDNSLookupFailed,
                     }),
                 )
-                .await
-                .unwrap();
-            return;
+                .await?;
+            return Ok(());
         }
         res.unwrap()
             .iter()
@@ -70,8 +69,7 @@ pub async fn mtr(payload: Payload, socket: SocketClient) {
                             "rtt": node.rtt.as_millis(),
                         }),
                     )
-                    .await
-                    .unwrap();
+                    .await?;
             }
         }
         Err(e) => {
@@ -85,8 +83,8 @@ pub async fn mtr(payload: Payload, socket: SocketClient) {
                         "error": SocketIOError::ErrMTRFailed,
                     }),
                 )
-                .await
-                .unwrap();
+                .await?;
         }
     }
+    Ok(())
 }

@@ -10,7 +10,7 @@ use tokio::time;
 use tracing::debug;
 use tracing::error;
 
-pub async fn ping(payload: Payload, socket: SocketClient) {
+pub async fn ping(payload: Payload, socket: SocketClient) -> Result<(), rust_socketio::Error> {
     let data: Value = match payload {
         Payload::String(data) => serde_json::from_str(&data).unwrap(),
         Payload::Binary(data) => serde_json::from_slice(&data).unwrap(),
@@ -38,9 +38,8 @@ pub async fn ping(payload: Payload, socket: SocketClient) {
                         "error":SocketIOError::ErrDNSLookupFailed,
                     }),
                 )
-                .await
-                .unwrap();
-            return;
+                .await?;
+            return Ok(());
         }
         res.unwrap()
             .iter()
@@ -67,32 +66,34 @@ pub async fn ping(payload: Payload, socket: SocketClient) {
     for idx in 0..times {
         interval.tick().await;
         match pinger.ping(PingSequence(idx), &payload).await {
-            Ok((IcmpPacket::V4(packet), dur)) => socket
-                .emit(
-                    event,
-                    json!({
-                        "job_id": job_id,
-                        "node_id": node_id,
-                        "ip": packet.get_source(),
-                        "duration": Some(dur).map(|d| d.as_millis()),
-                        "seq": packet.get_sequence().0+1,
-                    }),
-                )
-                .await
-                .unwrap(),
-            Ok((IcmpPacket::V6(packet), dur)) => socket
-                .emit(
-                    event,
-                    json!({
-                        "job_id": job_id,
-                        "node_id": node_id,
-                        "ip": packet.get_source(),
-                        "duration": Some(dur).map(|d| d.as_millis()),
-                        "seq": packet.get_sequence().0+1,
-                    }),
-                )
-                .await
-                .unwrap(),
+            Ok((IcmpPacket::V4(packet), dur)) => {
+                socket
+                    .emit(
+                        event,
+                        json!({
+                            "job_id": job_id,
+                            "node_id": node_id,
+                            "ip": packet.get_source(),
+                            "duration": Some(dur).map(|d| d.as_millis()),
+                            "seq": packet.get_sequence().0+1,
+                        }),
+                    )
+                    .await?
+            }
+            Ok((IcmpPacket::V6(packet), dur)) => {
+                socket
+                    .emit(
+                        event,
+                        json!({
+                            "job_id": job_id,
+                            "node_id": node_id,
+                            "ip": packet.get_source(),
+                            "duration": Some(dur).map(|d| d.as_millis()),
+                            "seq": packet.get_sequence().0+1,
+                        }),
+                    )
+                    .await?
+            }
             Err(e) => {
                 error!("ping {} failed: {}", host, e);
                 socket
@@ -107,9 +108,9 @@ pub async fn ping(payload: Payload, socket: SocketClient) {
                             "error": SocketIOError::ErrPingFailed,
                         }),
                     )
-                    .await
-                    .unwrap()
+                    .await?;
             }
         }
     }
+    Ok(())
 }

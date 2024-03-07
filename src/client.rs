@@ -4,7 +4,7 @@ use futures_util::FutureExt;
 use rust_socketio::TransportType::Websocket;
 use rust_socketio::{asynchronous::Client, asynchronous::ClientBuilder, Payload};
 use tokio::sync::mpsc;
-use tracing::error;
+use tracing::{debug, error};
 
 pub async fn connect_server(
     tx: mpsc::Sender<String>,
@@ -19,30 +19,58 @@ pub async fn connect_server(
         .namespace("/agent")
         .on("ping", |payload: Payload, socket: Client| {
             async move {
-                ping::ping(payload, socket).await;
+                match ping::ping(payload, socket).await {
+                    Ok(_) => {}
+                    Err(err) => {
+                        debug!("ping error: {}", err);
+                    }
+                }
             }
             .boxed()
         })
         .on("tcping", |payload: Payload, socket: Client| {
             async move {
-                tcping::tcping(payload, socket).await;
+                match tcping::tcping(payload, socket).await {
+                    Ok(_) => {}
+                    Err(err) => {
+                        debug!("tcping error: {}", err);
+                    }
+                }
             }
             .boxed()
         })
         .on("dns", |payload: Payload, socket: Client| {
             async move {
-                dns::dns(payload, socket).await;
+                match dns::dns(payload, socket).await {
+                    Ok(_) => {}
+                    Err(err) => {
+                        debug!("dns error: {}", err);
+                    }
+                }
             }
             .boxed()
         })
         .on("mtr", |payload: Payload, socket: Client| {
             async move {
-                mtr::mtr(payload, socket).await;
+                match mtr::mtr(payload, socket).await {
+                    Ok(_) => {}
+                    Err(err) => {
+                        debug!("mtr error: {}", err);
+                    }
+                }
             }
             .boxed()
         })
         .on("http", |payload: Payload, socket: Client| {
-            async move { http::http(payload, socket).await }.boxed()
+            async move {
+                match http::http(payload, socket).await {
+                    Ok(_) => {}
+                    Err(err) => {
+                        debug!("http error: {}", err);
+                    }
+                }
+            }
+            .boxed()
         })
         .on("error", move |err, _| {
             let tx = tx.clone();

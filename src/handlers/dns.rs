@@ -4,7 +4,8 @@ use crate::utils::is_ip;
 use rust_socketio::{asynchronous::Client as SocketClient, Payload};
 use serde_json::{json, Value};
 use tracing::debug;
-pub async fn dns(payload: Payload, socket: SocketClient) {
+
+pub async fn dns(payload: Payload, socket: SocketClient) -> Result<(), rust_socketio::Error> {
     let data: Value = match payload {
         Payload::String(data) => serde_json::from_str(&data).unwrap(),
         Payload::Binary(data) => serde_json::from_slice(&data).unwrap(),
@@ -39,8 +40,7 @@ pub async fn dns(payload: Payload, socket: SocketClient) {
                         "ips": ips,
                     }),
                 )
-                .await
-                .unwrap();
+                .await?;
         }
         None => {
             socket
@@ -52,8 +52,8 @@ pub async fn dns(payload: Payload, socket: SocketClient) {
                         "error": SocketIOError::ErrDNSLookupFailed
                     }),
                 )
-                .await
-                .unwrap();
+                .await?;
         }
     }
+    Ok(())
 }

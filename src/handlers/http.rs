@@ -9,7 +9,7 @@ use tracing::debug;
 use tracing::error;
 use url::Url;
 
-pub async fn http(payload: Payload, socket: SocketClient) {
+pub async fn http(payload: Payload, socket: SocketClient) -> Result<(), rust_socketio::Error> {
     let data: Value = match payload {
         Payload::String(data) => serde_json::from_str(&data).unwrap(),
         Payload::Binary(data) => serde_json::from_slice(&data).unwrap(),
@@ -40,9 +40,8 @@ pub async fn http(payload: Payload, socket: SocketClient) {
                         "error": SocketIOError::ErrDNSLookupFailed
                     }),
                 )
-                .await
-                .unwrap();
-            return;
+                .await?;
+            return Ok(());
         }
         res.unwrap()
             .iter()
@@ -84,8 +83,7 @@ pub async fn http(payload: Payload, socket: SocketClient) {
                         "status": status,
                     }),
                 )
-                .await
-                .unwrap();
+                .await?;
         }
         Err(e) => {
             error!("http {} failed: {}", url, e);
@@ -101,8 +99,8 @@ pub async fn http(payload: Payload, socket: SocketClient) {
                         "error": SocketIOError::ErrHTTPFailed,
                     }),
                 )
-                .await
-                .unwrap();
+                .await?;
         }
     }
+    Ok(())
 }
