@@ -52,9 +52,11 @@ pub async fn tcping(payload: Payload, socket: SocketClient) -> Result<(), rust_s
     for idx in 0..times {
         interval.tick().await;
         let start = std::time::Instant::now();
-        let res =
-            tokio::time::timeout(Duration::from_secs(5), tokio::net::TcpStream::connect(host))
-                .await;
+        let res = tokio::time::timeout(
+            Duration::from_secs(10),
+            tokio::net::TcpStream::connect(host),
+        )
+        .await;
         match res {
             Ok(_) => {
                 let ms = start.elapsed().as_millis();
