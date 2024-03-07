@@ -13,7 +13,8 @@ use crate::{cli::Cli, constant::V6_SERVER};
 use crate::client::connect_server;
 use clap::Parser;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, Level};
+use tokio::time::sleep;
+use tracing::{error, info, warn, Level};
 use tracing_subscriber::fmt;
 
 #[tokio::main]
@@ -32,44 +33,89 @@ async fn main() {
     let (tx, mut rx) = mpsc::channel::<String>(2);
     let mut v4_ok = false;
     let mut v6_ok = false;
+    let v4_server = args
+        .v4_server
+        .clone()
+        .unwrap_or_else(|| V4_SERVER.to_string());
+    let v6_server = args
+        .v6_server
+        .clone()
+        .unwrap_or_else(|| V6_SERVER.to_string());
     if !args.v4_only {
-        let server = args
-            .v6_server
-            .clone()
-            .unwrap_or_else(|| V6_SERVER.to_string());
-        let ret = connect_server(tx.clone(), "v4".to_string(), server, args.api_key.clone()).await;
-        if ret.is_ok() {
-            v4_ok = true
-        } else {
-            debug!("connect ipv6 server failed: {}", ret.err().unwrap());
-        }
-    }
-    if !args.v6_only {
-        let server = args
-            .v4_server
-            .clone()
-            .unwrap_or_else(|| V4_SERVER.to_string());
-        let ret = connect_server(tx.clone(), "v6".to_string(), server, args.api_key).await;
+        let ret = connect_server(
+            tx.clone(),
+            "v6".to_string(),
+            v6_server.clone(),
+            args.api_key.clone(),
+        )
+        .await;
         if ret.is_ok() {
             v6_ok = true
         } else {
-            debug!("connect ipv4 server failed: {}", ret.err().unwrap());
+            error!("connect ipv6 server failed: {}", ret.err().unwrap());
         }
     }
+    if !args.v6_only {
+        let ret = connect_server(
+            tx.clone(),
+            "v4".to_string(),
+            v4_server.clone(),
+            args.api_key.clone(),
+        )
+        .await;
+        if ret.is_ok() {
+            v4_ok = true
+        } else {
+            error!("connect ipv4 server failed: {}", ret.err().unwrap());
+        }
+    }
+    if v4_ok {
+        info!("Congratulations, you have successfully connected to the ipv4 server!");
+    }
+    if v6_ok {
+        info!("Congratulations, you have successfully connected to the ipv6 server!");
+    }
     if !v4_ok && !v6_ok {
-        error!("connect ipv4 and ipv6 server failed, please check your network or try again later");
+        error!("Failed to connect to any server, please check your network and try again");
         exit(1);
     }
-    info!("Congratulations, you have successfully started the agent!");
 
     while let Some(server_type) = rx.recv().await {
         if server_type == "v4" && v4_ok {
-            error!("ipv4 server disconnected, try to reconnect...");
-            exit(1);
+            warn!("ipv4 server disconnected, try to reconnect...");
+            let ret = connect_server(
+                tx.clone(),
+                "v4".to_string(),
+                v4_server.clone(),
+                args.api_key.clone(),
+            )
+            .await;
+            if ret.is_err() {
+                error!(
+                    "reconnect ipv4 server failed: {}, sleep 5 seconds and try again",
+                    ret.err().unwrap()
+                );
+                tx.send("v4".to_string()).await.unwrap();
+            }
+            sleep(tokio::time::Duration::from_secs(5)).await;
         }
         if server_type == "v6" && v6_ok {
-            error!("ipv6 server disconnected, try to reconnect...");
-            exit(1);
+            warn!("ipv6 server disconnected, try to reconnect...");
+            let ret = connect_server(
+                tx.clone(),
+                "v6".to_string(),
+                v6_server.clone(),
+                args.api_key.clone(),
+            )
+            .await;
+            if ret.is_err() {
+                error!(
+                    "reconnect ipv6 server failed: {}, sleep 5 seconds and try again",
+                    ret.err().unwrap()
+                );
+                tx.send("v6".to_string()).await.unwrap();
+            }
+            sleep(tokio::time::Duration::from_secs(5)).await;
         }
     }
 }
