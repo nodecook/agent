@@ -12,6 +12,8 @@ pub async fn connect_server(
     server: String,
     api_key: String,
 ) -> Result<rust_socketio::asynchronous::Client, rust_socketio::Error> {
+    let tx_error = tx.clone();
+    let server_type_error = server_type.clone();
     ClientBuilder::new(server)
         .transport_type(Websocket)
         .opening_header("Authorization", format!("Bearer {}", api_key))
@@ -26,7 +28,7 @@ pub async fn connect_server(
                     }
                 }
             }
-            .boxed()
+                .boxed()
         })
         .on("tcping", |payload: Payload, socket: Client| {
             async move {
@@ -37,7 +39,7 @@ pub async fn connect_server(
                     }
                 }
             }
-            .boxed()
+                .boxed()
         })
         .on("dns", |payload: Payload, socket: Client| {
             async move {
@@ -48,7 +50,7 @@ pub async fn connect_server(
                     }
                 }
             }
-            .boxed()
+                .boxed()
         })
         .on("mtr", |payload: Payload, socket: Client| {
             async move {
@@ -59,7 +61,7 @@ pub async fn connect_server(
                     }
                 }
             }
-            .boxed()
+                .boxed()
         })
         .on("http", |payload: Payload, socket: Client| {
             async move {
@@ -70,11 +72,11 @@ pub async fn connect_server(
                     }
                 }
             }
-            .boxed()
+                .boxed()
         })
         .on("error", move |err, _| {
-            let tx = tx.clone();
-            let server_type = server_type.clone();
+            let tx = tx_error.clone();
+            let server_type = server_type_error.clone();
             async move {
                 let data = match err {
                     Payload::String(data) => data,
@@ -83,7 +85,16 @@ pub async fn connect_server(
                 error!("Connect server error: {}", data);
                 tx.send(server_type).await.unwrap();
             }
-            .boxed()
+                .boxed()
+        })
+        .on("close", move |_, _| {
+            let tx = tx.clone();
+            let server_type = server_type.clone();
+            async move {
+                error!("Server closed!");
+                tx.send(server_type).await.unwrap();
+            }
+                .boxed()
         })
         .connect()
         .await
