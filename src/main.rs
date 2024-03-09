@@ -7,6 +7,7 @@ mod handlers;
 mod utils;
 
 use std::process::exit;
+use std::time::Duration;
 
 use crate::constant::V4_SERVER;
 use crate::{cli::Cli, constant::V6_SERVER};
@@ -31,7 +32,7 @@ async fn main() {
         error!("ipv4_only and ipv6_only can't be true at the same time");
         exit(1);
     }
-    let (tx, mut rx) = mpsc::channel::<String>(2);
+    let (tx, mut rx) = mpsc::channel::<String>(10);
     let mut v4_ok = false;
     let mut v6_ok = false;
     let v4_server = args
@@ -82,7 +83,7 @@ async fn main() {
     }
 
     while let Some(server_type) = rx.recv().await {
-        if server_type == "v4" && v4_ok {
+        if server_type == "v4" {
             warn!("ipv4 server disconnected, try to reconnect...");
             let ret = connect_server(
                 tx.clone(),
@@ -100,9 +101,9 @@ async fn main() {
             } else {
                 info!("Congratulations, you have successfully reconnected to the ipv4 server!");
             }
-            sleep(tokio::time::Duration::from_secs(5)).await;
+            sleep(Duration::from_secs(5)).await;
         }
-        if server_type == "v6" && v6_ok {
+        if server_type == "v6" {
             warn!("ipv6 server disconnected, try to reconnect...");
             let ret = connect_server(
                 tx.clone(),
@@ -120,7 +121,7 @@ async fn main() {
             } else {
                 info!("Congratulations, you have successfully reconnected to the ipv6 server!");
             }
-            sleep(tokio::time::Duration::from_secs(5)).await;
+            sleep(Duration::from_secs(5)).await;
         }
     }
 }
