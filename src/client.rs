@@ -3,8 +3,26 @@ use crate::handlers::{dns, http, mtr, ping, tcping};
 use futures_util::FutureExt;
 use rust_socketio::TransportType::Websocket;
 use rust_socketio::{asynchronous::Client, asynchronous::ClientBuilder, Payload};
+use serde_json::json;
+use serde_json::Value::Null;
 use tokio::sync::mpsc;
 use tracing::{debug, error};
+use tokio::{task, time};
+
+async fn ping_interval(tx: mpsc::Sender<String>, server_type: String, socket: Client) {
+    let mut interval = time::interval(time::Duration::from_secs(10));
+    loop {
+        interval.tick().await;
+        match socket.emit("agent", json!(Null)).await {
+            Ok(_) => {}
+            Err(err) => {
+                error!("ping error: {}", err);
+                tx.send(server_type).await.unwrap();
+                break;
+            }
+        }
+    }
+}
 
 pub async fn connect_server(
     tx: mpsc::Sender<String>,
@@ -12,13 +30,21 @@ pub async fn connect_server(
     server: String,
     api_key: String,
 ) -> Result<rust_socketio::asynchronous::Client, rust_socketio::Error> {
-    let tx_error = tx.clone();
-    let server_type_error = server_type.clone();
+    let tx_clone = tx.clone();
+    let server_type_clone = server_type.clone();
     ClientBuilder::new(server)
         .transport_type(Websocket)
         .opening_header("Authorization", format!("Bearer {}", api_key))
         .opening_header("x-version", VERSION)
         .namespace("/agent")
+        .on("open", move |_, socket| {
+            let tx = tx_clone.clone();
+            let server_type = server_type_clone.clone();
+            async move {
+                task::spawn(ping_interval(tx, server_type, socket.clone()));
+            }
+                .boxed()
+        })
         .on("ping", |payload: Payload, socket: Client| {
             async move {
                 match ping::ping(payload, socket).await {
@@ -75,23 +101,14 @@ pub async fn connect_server(
                 .boxed()
         })
         .on("error", move |err, _| {
-            let tx = tx_error.clone();
-            let server_type = server_type_error.clone();
+            let tx = tx.clone();
+            let server_type = server_type.clone();
             async move {
                 let data = match err {
                     Payload::String(data) => data,
                     Payload::Binary(data) => String::from_utf8_lossy(&data).to_string(),
                 };
-                error!("Connect server error: {}", data);
-                tx.send(server_type).await.unwrap();
-            }
-                .boxed()
-        })
-        .on("close", move |_, _| {
-            let tx = tx.clone();
-            let server_type = server_type.clone();
-            async move {
-                error!("Server closed!");
+                error!("Server disconnected: {}", data);
                 tx.send(server_type).await.unwrap();
             }
                 .boxed()

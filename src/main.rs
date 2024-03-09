@@ -5,6 +5,7 @@ mod dns_resolve;
 mod errors;
 mod handlers;
 mod utils;
+
 use std::process::exit;
 
 use crate::constant::V4_SERVER;
@@ -48,7 +49,7 @@ async fn main() {
             v6_server.clone(),
             args.api_key.clone(),
         )
-        .await;
+            .await;
         if ret.is_ok() {
             v6_ok = true
         } else {
@@ -62,7 +63,7 @@ async fn main() {
             v4_server.clone(),
             args.api_key.clone(),
         )
-        .await;
+            .await;
         if ret.is_ok() {
             v4_ok = true
         } else {
@@ -89,13 +90,15 @@ async fn main() {
                 v4_server.clone(),
                 args.api_key.clone(),
             )
-            .await;
+                .await;
             if ret.is_err() {
                 error!(
                     "reconnect ipv4 server failed: {}, sleep 5 seconds and try again",
                     ret.err().unwrap()
                 );
                 tx.send("v4".to_string()).await.unwrap();
+            } else {
+                info!("Congratulations, you have successfully reconnected to the ipv4 server!");
             }
             sleep(tokio::time::Duration::from_secs(5)).await;
         }
@@ -107,13 +110,15 @@ async fn main() {
                 v6_server.clone(),
                 args.api_key.clone(),
             )
-            .await;
+                .await;
             if ret.is_err() {
                 error!(
                     "reconnect ipv6 server failed: {}, sleep 5 seconds and try again",
                     ret.err().unwrap()
                 );
                 tx.send("v6".to_string()).await.unwrap();
+            } else {
+                info!("Congratulations, you have successfully reconnected to the ipv6 server!");
             }
             sleep(tokio::time::Duration::from_secs(5)).await;
         }
