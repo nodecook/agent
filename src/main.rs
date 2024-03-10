@@ -85,43 +85,47 @@ async fn main() {
     while let Some(server_type) = rx.recv().await {
         if server_type == "v4" {
             warn!("ipv4 server disconnected, try to reconnect...");
-            let ret = connect_server(
+            match connect_server(
                 tx.clone(),
                 "v4".to_string(),
                 v4_server.clone(),
                 args.api_key.clone(),
             )
-                .await;
-            if ret.is_err() {
-                error!(
-                    "reconnect ipv4 server failed: {}, sleep 5 seconds and try again",
-                    ret.err().unwrap()
-                );
-                tx.send("v4".to_string()).await.unwrap();
-            } else {
-                info!("Congratulations, you have successfully reconnected to the ipv4 server!");
+                .await {
+                Ok(_) => {
+                    info!("Congratulations, you have successfully reconnected to the ipv4 server!");
+                }
+                Err(e) => {
+                    error!(
+                        "reconnect ipv4 server failed: {}, sleep 5 seconds and try again",
+                        e
+                    );
+                    sleep(Duration::from_secs(5)).await;
+
+                    tx.send("v4".to_string()).await.unwrap();
+                }
             }
-            sleep(Duration::from_secs(5)).await;
-        }
-        if server_type == "v6" {
+        } else if server_type == "v6" {
             warn!("ipv6 server disconnected, try to reconnect...");
-            let ret = connect_server(
+            match connect_server(
                 tx.clone(),
                 "v6".to_string(),
                 v6_server.clone(),
                 args.api_key.clone(),
             )
-                .await;
-            if ret.is_err() {
-                error!(
-                    "reconnect ipv6 server failed: {}, sleep 5 seconds and try again",
-                    ret.err().unwrap()
-                );
-                tx.send("v6".to_string()).await.unwrap();
-            } else {
-                info!("Congratulations, you have successfully reconnected to the ipv6 server!");
+                .await {
+                Ok(_) => {
+                    info!("Congratulations, you have successfully reconnected to the ipv6 server!");
+                }
+                Err(e) => {
+                    error!(
+                        "reconnect ipv6 server failed: {}, sleep 5 seconds and try again",
+                        e
+                    );
+                    sleep(Duration::from_secs(5)).await;
+                    tx.send("v6".to_string()).await.unwrap();
+                }
             }
-            sleep(Duration::from_secs(5)).await;
         }
     }
 }
