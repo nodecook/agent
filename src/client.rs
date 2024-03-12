@@ -6,18 +6,18 @@ use rust_socketio::{asynchronous::Client, asynchronous::ClientBuilder, Payload};
 use serde_json::json;
 use serde_json::Value::Null;
 use tokio::sync::mpsc;
-use tracing::{debug, error};
 use tokio::{task, time};
+use tracing::{debug, error};
 
 async fn ping_interval(tx: mpsc::Sender<String>, server_type: String, socket: Client) {
-    let mut interval = time::interval(time::Duration::from_secs(10));
+    let mut interval = time::interval(time::Duration::from_secs(60));
     loop {
         interval.tick().await;
         match socket.emit("agent", json!(Null)).await {
             Ok(_) => {}
             Err(err) => {
                 error!("ping error: {}", err);
-                tx.send(server_type).await.unwrap();
+                let _ = tx.try_send(server_type);
                 break;
             }
         }
@@ -43,7 +43,7 @@ pub async fn connect_server(
             async move {
                 task::spawn(ping_interval(tx, server_type, socket.clone()));
             }
-                .boxed()
+            .boxed()
         })
         .on("ping", |payload: Payload, socket: Client| {
             async move {
@@ -54,7 +54,7 @@ pub async fn connect_server(
                     }
                 }
             }
-                .boxed()
+            .boxed()
         })
         .on("tcping", |payload: Payload, socket: Client| {
             async move {
@@ -65,7 +65,7 @@ pub async fn connect_server(
                     }
                 }
             }
-                .boxed()
+            .boxed()
         })
         .on("dns", |payload: Payload, socket: Client| {
             async move {
@@ -76,7 +76,7 @@ pub async fn connect_server(
                     }
                 }
             }
-                .boxed()
+            .boxed()
         })
         .on("mtr", |payload: Payload, socket: Client| {
             async move {
@@ -87,7 +87,7 @@ pub async fn connect_server(
                     }
                 }
             }
-                .boxed()
+            .boxed()
         })
         .on("http", |payload: Payload, socket: Client| {
             async move {
@@ -98,7 +98,7 @@ pub async fn connect_server(
                     }
                 }
             }
-                .boxed()
+            .boxed()
         })
         .on("error", move |err, _| {
             let tx = tx.clone();
@@ -109,9 +109,9 @@ pub async fn connect_server(
                     Payload::Binary(data) => String::from_utf8_lossy(&data).to_string(),
                 };
                 error!("Server disconnected: {}", data);
-                tx.send(server_type).await.unwrap();
+                let _ = tx.try_send(server_type);
             }
-                .boxed()
+            .boxed()
         })
         .connect()
         .await

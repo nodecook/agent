@@ -32,7 +32,7 @@ async fn main() {
         error!("ipv4_only and ipv6_only can't be true at the same time");
         exit(1);
     }
-    let (tx, mut rx) = mpsc::channel::<String>(10);
+    let (tx, mut rx) = mpsc::channel::<String>(2);
     let mut v4_ok = false;
     let mut v6_ok = false;
     let v4_server = args
@@ -50,7 +50,7 @@ async fn main() {
             v6_server.clone(),
             args.api_key.clone(),
         )
-            .await;
+        .await;
         if ret.is_ok() {
             v6_ok = true
         } else {
@@ -64,7 +64,7 @@ async fn main() {
             v4_server.clone(),
             args.api_key.clone(),
         )
-            .await;
+        .await;
         if ret.is_ok() {
             v4_ok = true
         } else {
@@ -91,7 +91,8 @@ async fn main() {
                 v4_server.clone(),
                 args.api_key.clone(),
             )
-                .await {
+            .await
+            {
                 Ok(_) => {
                     info!("Congratulations, you have successfully reconnected to the ipv4 server!");
                 }
@@ -101,8 +102,7 @@ async fn main() {
                         e
                     );
                     sleep(Duration::from_secs(5)).await;
-
-                    tx.send("v4".to_string()).await.unwrap();
+                    let _ = tx.try_send("v4".to_string());
                 }
             }
         } else if server_type == "v6" {
@@ -113,7 +113,8 @@ async fn main() {
                 v6_server.clone(),
                 args.api_key.clone(),
             )
-                .await {
+            .await
+            {
                 Ok(_) => {
                     info!("Congratulations, you have successfully reconnected to the ipv6 server!");
                 }
@@ -123,7 +124,7 @@ async fn main() {
                         e
                     );
                     sleep(Duration::from_secs(5)).await;
-                    tx.send("v6".to_string()).await.unwrap();
+                    let _ = tx.try_send("v6".to_string());
                 }
             }
         }
