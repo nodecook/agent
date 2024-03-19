@@ -5,31 +5,21 @@ on:
       - main
 jobs:
   build:
-    permissions:
-      contents: read
-      packages: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Log in to the Container registry
-        uses: docker/login-action@v3
+      - name: Compile
+        id: compile
+        uses: rust-build/rust-build.action@v1.4.5
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
+          RUSTTARGET: x86_64-unknown-linux-musl
+          UPLOAD_MODE: none
+      - name: Minio Deploy
+        uses: lovellfelix/minio-deploy-action@v1
         with:
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-          images: |
-            ghcr.io/${{ github.repository }}
-      - name: Build and push Docker images
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          cache-from: type=gha
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          endpoint: ${{ secrets.MINIO_ENDPOINT }}
+          access_key: ${{ secrets.MINIO_ACCESS_KEY }}
+          secret_key: ${{ secrets.MINIO_SECRET_KEY }}
+          bucket: "nodecook"
+          source_dir: ${{ steps.compile.outputs.BUILT_ARCHIVE }}
+          target_dir: "/"

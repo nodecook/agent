@@ -1,6 +1,5 @@
 use crate::dns_resolve;
 use crate::errors::SocketIOError;
-use crate::utils::is_ip;
 use rust_socketio::{asynchronous::Client as SocketClient, Payload};
 use serde_json::{json, Value};
 use tracing::debug;
@@ -19,17 +18,11 @@ pub async fn dns(payload: Payload, socket: SocketClient) -> Result<(), rust_sock
     let ns = data["ns"].as_str();
     let start = std::time::Instant::now();
     let res = dns_resolve::resolve(domain, type_, ns).await;
+    debug!("dns resolve result: {:?}", res);
     match res {
         Some(res) => {
             let ms = start.elapsed().as_millis();
-            let ips = if type_ == "CNAME" {
-                res.iter().map(|ip| ip.to_string()).collect::<Vec<String>>()
-            } else {
-                res.iter()
-                    .filter(|ip| is_ip(&ip.to_string()))
-                    .map(|ip| ip.to_string())
-                    .collect::<Vec<String>>()
-            };
+            let ips = res.iter().map(|ip| ip.to_string()).collect::<Vec<String>>();
             socket
                 .emit(
                     event,
