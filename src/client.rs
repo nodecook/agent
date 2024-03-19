@@ -7,7 +7,7 @@ use serde_json::json;
 use serde_json::Value::Null;
 use tokio::sync::mpsc;
 use tokio::{task, time};
-use tracing::{debug, error};
+use tracing::error;
 
 async fn ping_interval(tx: mpsc::Sender<String>, server_type: String, socket: Client) {
     let mut interval = time::interval(time::Duration::from_secs(60));
@@ -47,56 +47,31 @@ pub async fn connect_server(
         })
         .on("ping", |payload: Payload, socket: Client| {
             async move {
-                match ping::ping(payload, socket).await {
-                    Ok(_) => {}
-                    Err(err) => {
-                        debug!("ping error: {}", err);
-                    }
-                }
+                task::spawn(ping::ping(payload, socket));
             }
             .boxed()
         })
         .on("tcping", |payload: Payload, socket: Client| {
             async move {
-                match tcping::tcping(payload, socket).await {
-                    Ok(_) => {}
-                    Err(err) => {
-                        debug!("tcping error: {}", err);
-                    }
-                }
+                task::spawn(tcping::tcping(payload, socket));
             }
             .boxed()
         })
         .on("dns", |payload: Payload, socket: Client| {
             async move {
-                match dns::dns(payload, socket).await {
-                    Ok(_) => {}
-                    Err(err) => {
-                        debug!("dns error: {}", err);
-                    }
-                }
+                task::spawn(dns::dns(payload, socket));
             }
             .boxed()
         })
         .on("mtr", |payload: Payload, socket: Client| {
             async move {
-                match mtr::mtr(payload, socket).await {
-                    Ok(_) => {}
-                    Err(err) => {
-                        debug!("mtr error: {}", err);
-                    }
-                }
+                task::spawn(mtr::mtr(payload, socket));
             }
             .boxed()
         })
         .on("http", |payload: Payload, socket: Client| {
             async move {
-                match http::http(payload, socket).await {
-                    Ok(_) => {}
-                    Err(err) => {
-                        debug!("http error: {}", err);
-                    }
-                }
+                task::spawn(http::http(payload, socket));
             }
             .boxed()
         })
