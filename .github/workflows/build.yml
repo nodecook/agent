@@ -17,5 +17,5 @@ jobs:
           access_key: ${{ secrets.MINIO_ACCESS_KEY }}
           secret_key: ${{ secrets.MINIO_SECRET_KEY }}
           bucket: nodecook
-          source: target/x86_64-unknown-linux-gnu/release/nodecook-agent
-          target: /
+          source: ./target/x86_64-unknown-linux-gnu/release/nodecook-agent
+          target: /agent
