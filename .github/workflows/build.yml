@@ -8,15 +8,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: rustup toolchain install stable --profile minimal --no-self-update
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --release --target x86_64-unknown-linux-gnu
       - name: Minio Deploy
-        uses: lovellfelix/minio-deploy-action@v1
+        uses: yakubique/minio-upload@v1.1.3
         with:
           endpoint: ${{ secrets.MINIO_ENDPOINT }}
           access_key: ${{ secrets.MINIO_ACCESS_KEY }}
           secret_key: ${{ secrets.MINIO_SECRET_KEY }}
-          bucket: "nodecook"
-          source_dir: "target/x86_64-unknown-linux-gnu/release/"
-          target_dir: "/"
+          bucket: nodecook
+          source: target/x86_64-unknown-linux-gnu/release/nodecook-agent
+          target: /
