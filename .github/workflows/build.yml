@@ -8,12 +8,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Compile
-        id: compile
-        uses: rust-build/rust-build.action@v1.4.5
-        with:
-          RUSTTARGET: x86_64-unknown-linux-musl
-          UPLOAD_MODE: none
+      - run: rustup toolchain install stable --profile minimal --no-self-update
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release --target x86_64-unknown-linux-musl
       - name: Minio Deploy
         uses: lovellfelix/minio-deploy-action@v1
         with:
@@ -21,5 +18,5 @@ jobs:
           access_key: ${{ secrets.MINIO_ACCESS_KEY }}
           secret_key: ${{ secrets.MINIO_SECRET_KEY }}
           bucket: "nodecook"
-          source_dir: ${{ steps.compile.outputs.BUILT_ARCHIVE }}
+          source_dir: "target/x86_64-unknown-linux-musl/release/"
           target_dir: "/"
