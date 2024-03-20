@@ -23,4 +23,4 @@ jobs:
           secret_key: ${{ secrets.MINIO_SECRET_KEY }}
           bucket: nodecook
           source: ./target/x86_64-unknown-linux-gnu/release/nodecook-agent
-          target: ${{ matrix.os == 'ubuntu-latest' && 'agent' || 'agent-ubuntu-20.04'}}
+          target: ${{ matrix.os == 'ubuntu-latest' && '/agent' || '/agent-ubuntu-20.04'}}
