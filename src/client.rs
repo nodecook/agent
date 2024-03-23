@@ -29,6 +29,7 @@ pub async fn connect_server(
     server_type: String,
     server: String,
     api_key: String,
+    node_id: Option<u16>,
 ) -> Result<rust_socketio::asynchronous::Client, rust_socketio::Error> {
     let tx_clone = tx.clone();
     let server_type_clone = server_type.clone();
@@ -36,6 +37,7 @@ pub async fn connect_server(
         .transport_type(Websocket)
         .opening_header("Authorization", format!("Bearer {}", api_key))
         .opening_header("x-version", VERSION)
+        .opening_header("x-node-id", node_id.unwrap_or(0).to_string())
         .namespace("/agent")
         .on("open", move |_, socket| {
             let tx = tx_clone.clone();

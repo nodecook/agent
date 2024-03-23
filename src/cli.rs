@@ -26,4 +26,7 @@ pub struct Cli {
     /// Enable debug mode
     #[arg(short, long, default_value_t = false, env = "NCA_DEBUG")]
     pub debug: bool,
+    /// Node id
+    #[arg(short, long, env = "NCA_NODE_ID")]
+    pub node_id: Option<u16>,
 }
