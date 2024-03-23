@@ -43,14 +43,15 @@ async fn main() {
         .v6_server
         .clone()
         .unwrap_or_else(|| V6_SERVER.to_string());
-    let node_id = args.node_id;
+    let v4_node_id = args.v4_node_id;
+    let v6_node_id = args.v6_node_id;
     if !args.v4_only {
         let ret = connect_server(
             tx.clone(),
             "v6".to_string(),
             v6_server.clone(),
             args.api_key.clone(),
-            node_id,
+            v6_node_id,
         )
         .await;
         if ret.is_ok() {
@@ -65,7 +66,7 @@ async fn main() {
             "v4".to_string(),
             v4_server.clone(),
             args.api_key.clone(),
-            node_id,
+            v4_node_id,
         )
         .await;
         if ret.is_ok() {
@@ -93,7 +94,7 @@ async fn main() {
                 "v4".to_string(),
                 v4_server.clone(),
                 args.api_key.clone(),
-                node_id,
+                v4_node_id,
             )
             .await
             {
@@ -116,7 +117,7 @@ async fn main() {
                 "v6".to_string(),
                 v6_server.clone(),
                 args.api_key.clone(),
-                node_id,
+                v6_node_id,
             )
             .await
             {
