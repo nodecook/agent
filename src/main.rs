@@ -32,7 +32,7 @@ async fn main() {
         error!("ipv4_only and ipv6_only can't be true at the same time");
         exit(1);
     }
-    let (tx, mut rx) = mpsc::channel::<String>(2);
+    let (tx, mut rx) = mpsc::channel::<String>(4);
     let mut v4_ok = false;
     let mut v6_ok = false;
     let v4_server = args
