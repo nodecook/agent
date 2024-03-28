@@ -17,7 +17,7 @@ async fn ping_interval(tx: mpsc::Sender<String>, server_type: String, socket: Cl
             Ok(_) => {}
             Err(err) => {
                 error!("ping error: {}", err);
-                let _ = tx.try_send(server_type);
+                let _ = tx.send(server_type).await;
                 break;
             }
         }
@@ -86,7 +86,7 @@ pub async fn connect_server(
                     Payload::Binary(data) => String::from_utf8_lossy(&data).to_string(),
                 };
                 error!("Server disconnected: {}", data);
-                let _ = tx.try_send(server_type);
+                let _ = tx.send(server_type).await;
             }
             .boxed()
         })

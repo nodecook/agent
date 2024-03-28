@@ -15,7 +15,7 @@ use crate::{cli::Cli, constant::V6_SERVER};
 use crate::client::connect_server;
 use clap::Parser;
 use tokio::sync::mpsc;
-use tokio::time::sleep;
+use tokio::time::{self};
 use tracing::{error, info, warn, Level};
 use tracing_subscriber::fmt;
 
@@ -85,10 +85,15 @@ async fn main() {
         error!("Failed to connect to any server, please check your network and try again");
         exit(1);
     }
-
+    let mut v4_last_time = time::Instant::now();
+    let mut v6_last_time = time::Instant::now();
     while let Some(server_type) = rx.recv().await {
         if server_type == "v4" {
+            if v4_last_time.elapsed() < Duration::from_secs(5) {
+                continue;
+            }
             warn!("ipv4 server disconnected, try to reconnect...");
+            v4_last_time = time::Instant::now();
             match connect_server(
                 tx.clone(),
                 "v4".to_string(),
@@ -106,12 +111,15 @@ async fn main() {
                         "reconnect ipv4 server failed: {}, sleep 5 seconds and try again",
                         e
                     );
-                    sleep(Duration::from_secs(5)).await;
-                    let _ = tx.try_send("v4".to_string());
+                    let _ = tx.send(server_type).await;
                 }
             }
         } else if server_type == "v6" {
+            if v6_last_time.elapsed() < Duration::from_secs(5) {
+                continue;
+            }
             warn!("ipv6 server disconnected, try to reconnect...");
+            v6_last_time = time::Instant::now();
             match connect_server(
                 tx.clone(),
                 "v6".to_string(),
@@ -129,8 +137,7 @@ async fn main() {
                         "reconnect ipv6 server failed: {}, sleep 5 seconds and try again",
                         e
                     );
-                    sleep(Duration::from_secs(5)).await;
-                    let _ = tx.try_send("v6".to_string());
+                    let _ = tx.send(server_type).await;
                 }
             }
         }
