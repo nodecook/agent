@@ -86,7 +86,9 @@ pub async fn connect_server(
                     Payload::Binary(data) => String::from_utf8_lossy(&data).to_string(),
                 };
                 error!("Server disconnected: {}", data);
-                let _ = tx.send(server_type).await;
+                task::spawn(async move {
+                    let _ = tx.send(server_type).await;
+                });
             }
             .boxed()
         })

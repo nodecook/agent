@@ -15,6 +15,7 @@ use crate::{cli::Cli, constant::V6_SERVER};
 use crate::client::connect_server;
 use clap::Parser;
 use tokio::sync::mpsc;
+use tokio::task;
 use tokio::time::{self};
 use tracing::{error, info, warn, Level};
 use tracing_subscriber::fmt;
@@ -32,7 +33,7 @@ async fn main() {
         error!("ipv4_only and ipv6_only can't be true at the same time");
         exit(1);
     }
-    let (tx, mut rx) = mpsc::channel::<String>(4);
+    let (tx, mut rx) = mpsc::channel::<String>(2);
     let mut v4_ok = false;
     let mut v6_ok = false;
     let v4_server = args
@@ -46,33 +47,39 @@ async fn main() {
     let v4_node_id = args.v4_node_id;
     let v6_node_id = args.v6_node_id;
     if !args.v4_only {
-        let ret = connect_server(
+        match connect_server(
             tx.clone(),
             "v6".to_string(),
             v6_server.clone(),
             args.api_key.clone(),
             v6_node_id,
         )
-        .await;
-        if ret.is_ok() {
-            v6_ok = true
-        } else {
-            error!("connect ipv6 server failed: {}", ret.err().unwrap());
+        .await
+        {
+            Ok(_) => {
+                v6_ok = true;
+            }
+            Err(e) => {
+                error!("connect ipv6 server failed: {}", e);
+            }
         }
     }
     if !args.v6_only {
-        let ret = connect_server(
+        match connect_server(
             tx.clone(),
             "v4".to_string(),
             v4_server.clone(),
             args.api_key.clone(),
             v4_node_id,
         )
-        .await;
-        if ret.is_ok() {
-            v4_ok = true
-        } else {
-            error!("connect ipv4 server failed: {}", ret.err().unwrap());
+        .await
+        {
+            Ok(_) => {
+                v4_ok = true;
+            }
+            Err(e) => {
+                error!("connect ipv4 server failed: {}", e);
+            }
         }
     }
     if v4_ok {
@@ -96,7 +103,7 @@ async fn main() {
             v4_last_time = time::Instant::now();
             match connect_server(
                 tx.clone(),
-                "v4".to_string(),
+                server_type.clone(),
                 v4_server.clone(),
                 args.api_key.clone(),
                 v4_node_id,
@@ -111,7 +118,10 @@ async fn main() {
                         "reconnect ipv4 server failed: {}, sleep 5 seconds and try again",
                         e
                     );
-                    let _ = tx.send(server_type).await;
+                    let tx = tx.clone();
+                    task::spawn(async move {
+                        let _ = tx.send(server_type).await;
+                    });
                 }
             }
         } else if server_type == "v6" {
@@ -122,7 +132,7 @@ async fn main() {
             v6_last_time = time::Instant::now();
             match connect_server(
                 tx.clone(),
-                "v6".to_string(),
+                server_type.clone(),
                 v6_server.clone(),
                 args.api_key.clone(),
                 v6_node_id,
@@ -137,7 +147,10 @@ async fn main() {
                         "reconnect ipv6 server failed: {}, sleep 5 seconds and try again",
                         e
                     );
-                    let _ = tx.send(server_type).await;
+                    let tx = tx.clone();
+                    task::spawn(async move {
+                        let _ = tx.send(server_type).await;
+                    });
                 }
             }
         }
