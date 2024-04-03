@@ -1,4 +1,3 @@
-use crate::constant::VERSION;
 use crate::handlers::{dns, http, mtr, ping, tcping};
 use futures_util::FutureExt;
 use rust_socketio::TransportType::Websocket;
@@ -17,11 +16,22 @@ async fn ping_interval(tx: mpsc::Sender<String>, server_type: String, socket: Cl
             Ok(_) => {}
             Err(err) => {
                 error!("ping error: {}", err);
-                let _ = tx.send(server_type).await;
+                send_server_error(tx, server_type).await;
                 break;
             }
         }
     }
+}
+
+pub async fn send_server_error(tx: mpsc::Sender<String>, server_type: String) {
+    task::spawn(async move {
+        match tx.send(server_type).await {
+            Ok(_) => {}
+            Err(err) => {
+                error!("send_server_error error: {}", err);
+            }
+        }
+    });
 }
 
 pub async fn connect_server(
@@ -36,7 +46,6 @@ pub async fn connect_server(
     ClientBuilder::new(server)
         .transport_type(Websocket)
         .opening_header("Authorization", format!("Bearer {}", api_key))
-        .opening_header("x-version", VERSION)
         .opening_header("x-node-id", node_id.unwrap_or(0).to_string())
         .namespace("/agent")
         .on("open", move |_, socket| {
@@ -86,9 +95,7 @@ pub async fn connect_server(
                     Payload::Binary(data) => String::from_utf8_lossy(&data).to_string(),
                 };
                 error!("Server disconnected: {}", data);
-                task::spawn(async move {
-                    let _ = tx.send(server_type).await;
-                });
+                send_server_error(tx, server_type).await;
             }
             .boxed()
         })

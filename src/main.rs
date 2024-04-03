@@ -12,10 +12,9 @@ use std::time::Duration;
 use crate::constant::V4_SERVER;
 use crate::{cli::Cli, constant::V6_SERVER};
 
-use crate::client::connect_server;
+use crate::client::{connect_server, send_server_error};
 use clap::Parser;
 use tokio::sync::mpsc;
-use tokio::task;
 use tokio::time::{self};
 use tracing::{error, info, warn, Level};
 use tracing_subscriber::fmt;
@@ -92,15 +91,9 @@ async fn main() {
         error!("Failed to connect to any server, please check your network and try again");
         exit(1);
     }
-    let mut v4_last_time = time::Instant::now();
-    let mut v6_last_time = time::Instant::now();
     while let Some(server_type) = rx.recv().await {
         if server_type == "v4" {
-            if v4_last_time.elapsed() < Duration::from_secs(5) {
-                continue;
-            }
             warn!("ipv4 server disconnected, try to reconnect...");
-            v4_last_time = time::Instant::now();
             match connect_server(
                 tx.clone(),
                 server_type.clone(),
@@ -118,18 +111,12 @@ async fn main() {
                         "reconnect ipv4 server failed: {}, sleep 5 seconds and try again",
                         e
                     );
-                    let tx = tx.clone();
-                    task::spawn(async move {
-                        let _ = tx.send(server_type).await;
-                    });
+                    time::sleep(Duration::from_secs(5)).await;
+                    send_server_error(tx.clone(), server_type).await;
                 }
             }
         } else if server_type == "v6" {
-            if v6_last_time.elapsed() < Duration::from_secs(5) {
-                continue;
-            }
             warn!("ipv6 server disconnected, try to reconnect...");
-            v6_last_time = time::Instant::now();
             match connect_server(
                 tx.clone(),
                 server_type.clone(),
@@ -147,10 +134,8 @@ async fn main() {
                         "reconnect ipv6 server failed: {}, sleep 5 seconds and try again",
                         e
                     );
-                    let tx = tx.clone();
-                    task::spawn(async move {
-                        let _ = tx.send(server_type).await;
-                    });
+                    time::sleep(Duration::from_secs(5)).await;
+                    send_server_error(tx.clone(), server_type).await;
                 }
             }
         }
