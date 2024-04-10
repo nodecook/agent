@@ -16,8 +16,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --release --target x86_64-unknown-linux-gnu
       - name: echo sha256
-        run: |
-          sha256sum ./target/x86_64-unknown-linux-gnu/release/nodecook-agent
+        run: sha256sum ./target/x86_64-unknown-linux-gnu/release/nodecook-agent
       - name: Minio Deploy
         uses: yakubique/minio-upload@v1.1.3
         with:
