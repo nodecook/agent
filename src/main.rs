@@ -5,16 +5,15 @@ mod dns_resolve;
 mod errors;
 mod handlers;
 mod utils;
-
-use std::process::exit;
-use std::time::Duration;
-
+use crate::client::{connect_server, send_server_error};
 use crate::constant::V4_SERVER;
 use crate::{cli::Cli, constant::V6_SERVER};
-
-use crate::client::{connect_server, send_server_error};
 use clap::Parser;
+use client::ping_interval;
+use std::process::exit;
+use std::time::Duration;
 use tokio::sync::mpsc;
+use tokio::task;
 use tokio::time::{self};
 use tracing::{error, info, warn, Level};
 use tracing_subscriber::fmt;
@@ -45,24 +44,6 @@ async fn main() {
         .unwrap_or_else(|| V6_SERVER.to_string());
     let v4_node_id = args.v4_node_id;
     let v6_node_id = args.v6_node_id;
-    if !args.v4_only {
-        match connect_server(
-            tx.clone(),
-            "v6".to_string(),
-            v6_server.clone(),
-            args.api_key.clone(),
-            v6_node_id,
-        )
-        .await
-        {
-            Ok(_) => {
-                v6_ok = true;
-            }
-            Err(e) => {
-                error!("connect ipv6 server failed: {}", e);
-            }
-        }
-    }
     if !args.v6_only {
         match connect_server(
             tx.clone(),
@@ -73,11 +54,31 @@ async fn main() {
         )
         .await
         {
-            Ok(_) => {
+            Ok(socket) => {
                 v4_ok = true;
+                task::spawn(ping_interval(tx.clone(), "v4".to_string(), socket.clone()));
             }
             Err(e) => {
                 error!("connect ipv4 server failed: {}", e);
+            }
+        }
+    }
+    if !args.v4_only {
+        match connect_server(
+            tx.clone(),
+            "v6".to_string(),
+            v6_server.clone(),
+            args.api_key.clone(),
+            v6_node_id,
+        )
+        .await
+        {
+            Ok(socket) => {
+                v6_ok = true;
+                task::spawn(ping_interval(tx.clone(), "v6".to_string(), socket.clone()));
+            }
+            Err(e) => {
+                error!("connect ipv6 server failed: {}", e);
             }
         }
     }
@@ -93,7 +94,7 @@ async fn main() {
     }
     while let Some(server_type) = rx.recv().await {
         if server_type == "v4" {
-            warn!("ipv4 server disconnected, try to reconnect...");
+            warn!("v4 server disconnected, try to reconnect...");
             match connect_server(
                 tx.clone(),
                 server_type.clone(),
@@ -103,12 +104,13 @@ async fn main() {
             )
             .await
             {
-                Ok(_) => {
-                    info!("Congratulations, you have successfully reconnected to the ipv4 server!");
+                Ok(socket) => {
+                    info!("Congratulations, you have successfully reconnected to the v4 server!");
+                    task::spawn(ping_interval(tx.clone(), "v4".to_string(), socket.clone()));
                 }
                 Err(e) => {
                     error!(
-                        "reconnect ipv4 server failed: {}, sleep 5 seconds and try again",
+                        "reconnect v4 server failed: {}, sleep 5 seconds and try again",
                         e
                     );
                     time::sleep(Duration::from_secs(5)).await;
@@ -126,12 +128,13 @@ async fn main() {
             )
             .await
             {
-                Ok(_) => {
-                    info!("Congratulations, you have successfully reconnected to the ipv6 server!");
+                Ok(socket) => {
+                    info!("Congratulations, you have successfully reconnected to the v6 server!");
+                    task::spawn(ping_interval(tx.clone(), "v6".to_string(), socket.clone()));
                 }
                 Err(e) => {
                     error!(
-                        "reconnect ipv6 server failed: {}, sleep 5 seconds and try again",
+                        "reconnect v6 server failed: {}, sleep 5 seconds and try again",
                         e
                     );
                     time::sleep(Duration::from_secs(5)).await;

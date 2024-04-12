@@ -8,7 +8,7 @@ use tokio::sync::mpsc;
 use tokio::{task, time};
 use tracing::error;
 
-async fn ping_interval(tx: mpsc::Sender<String>, server_type: String, socket: Client) {
+pub async fn ping_interval(tx: mpsc::Sender<String>, server_type: String, socket: Client) {
     let mut interval = time::interval(time::Duration::from_secs(60));
     loop {
         interval.tick().await;
@@ -41,21 +41,11 @@ pub async fn connect_server(
     api_key: String,
     node_id: Option<u16>,
 ) -> Result<rust_socketio::asynchronous::Client, rust_socketio::Error> {
-    let tx_clone = tx.clone();
-    let server_type_clone = server_type.clone();
     ClientBuilder::new(server)
         .transport_type(Websocket)
         .opening_header("Authorization", format!("Bearer {}", api_key))
         .opening_header("x-node-id", node_id.unwrap_or(0).to_string())
         .namespace("/agent")
-        .on("open", move |_, socket| {
-            let tx = tx_clone.clone();
-            let server_type = server_type_clone.clone();
-            async move {
-                task::spawn(ping_interval(tx, server_type, socket.clone()));
-            }
-            .boxed()
-        })
         .on("ping", |payload: Payload, socket: Client| {
             async move {
                 task::spawn(ping::ping(payload, socket));
