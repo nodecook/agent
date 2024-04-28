@@ -110,10 +110,10 @@ async fn main() {
                 }
                 Err(e) => {
                     error!(
-                        "reconnect v4 server failed: {}, sleep 5 seconds and try again",
+                        "reconnect v4 server failed: {}, sleep 1 mintue and try again",
                         e
                     );
-                    time::sleep(Duration::from_secs(5)).await;
+                    time::sleep(Duration::from_secs(60)).await;
                     send_server_error(tx.clone(), server_type).await;
                 }
             }
@@ -134,10 +134,10 @@ async fn main() {
                 }
                 Err(e) => {
                     error!(
-                        "reconnect v6 server failed: {}, sleep 5 seconds and try again",
+                        "reconnect v6 server failed: {}, sleep 1 minute and try again",
                         e
                     );
-                    time::sleep(Duration::from_secs(5)).await;
+                    time::sleep(Duration::from_secs(60)).await;
                     send_server_error(tx.clone(), server_type).await;
                 }
             }

@@ -9,7 +9,7 @@ use tokio::{task, time};
 use tracing::error;
 
 pub async fn ping_interval(tx: mpsc::Sender<String>, server_type: String, socket: Client) {
-    let mut interval = time::interval(time::Duration::from_secs(60));
+    let mut interval = time::interval(time::Duration::from_secs(10));
     loop {
         interval.tick().await;
         match socket.emit("agent", json!(Null)).await {
