@@ -18,9 +18,17 @@ pub async fn tcping(payload: Payload, socket: SocketClient) -> Result<(), rust_s
     let node_id = data["node_id"].as_u64().unwrap();
     let event = "tcping";
     let host = data["host"].as_str().unwrap();
-    let domain = host.split(":").next().unwrap();
-    let single = data["single"].as_bool().unwrap_or(true);
     let is_ipv4 = data["is_ipv4"].as_bool().unwrap_or(true);
+    let domain = match is_ipv4 {
+        true => host.split(":").next().unwrap(),
+        false => host
+            .split("]:")
+            .next()
+            .unwrap()
+            .trim_start_matches("[")
+            .trim_end_matches("]"),
+    };
+    let single = data["single"].as_bool().unwrap_or(true);
     let ns: Option<&str> = data["ns"].as_str();
     let record_type = if is_ipv4 { "A" } else { "AAAA" };
     let ip = if is_ip(domain) {
