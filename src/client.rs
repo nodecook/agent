@@ -25,7 +25,7 @@ pub async fn ping_interval(tx: mpsc::Sender<String>, server_type: String, socket
 
 pub async fn send_server_error(tx: mpsc::Sender<String>, server_type: String) {
     task::spawn(async move {
-        match tx.send(server_type).await {
+        match tx.try_send(server_type) {
             Ok(_) => {}
             Err(err) => {
                 error!("send_server_error error: {}", err);
