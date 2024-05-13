@@ -9,11 +9,9 @@ use crate::client::{connect_server, send_server_error};
 use crate::constant::V4_SERVER;
 use crate::{cli::Cli, constant::V6_SERVER};
 use clap::Parser;
-use client::ping_interval;
 use std::process::exit;
 use std::time::Duration;
 use tokio::sync::mpsc;
-use tokio::task;
 use tokio::time::{self};
 use tracing::{error, info, warn, Level};
 use tracing_subscriber::fmt;
@@ -54,9 +52,8 @@ async fn main() {
         )
         .await
         {
-            Ok(socket) => {
+            Ok(_) => {
                 v4_ok = true;
-                task::spawn(ping_interval(tx.clone(), "v4".to_string(), socket.clone()));
             }
             Err(e) => {
                 error!("connect ipv4 server failed: {}", e);
@@ -73,9 +70,8 @@ async fn main() {
         )
         .await
         {
-            Ok(socket) => {
+            Ok(_) => {
                 v6_ok = true;
-                task::spawn(ping_interval(tx.clone(), "v6".to_string(), socket.clone()));
             }
             Err(e) => {
                 error!("connect ipv6 server failed: {}", e);
@@ -104,9 +100,8 @@ async fn main() {
             )
             .await
             {
-                Ok(socket) => {
+                Ok(_) => {
                     info!("Congratulations, you have successfully reconnected to the v4 server!");
-                    task::spawn(ping_interval(tx.clone(), "v4".to_string(), socket.clone()));
                 }
                 Err(e) => {
                     error!(
@@ -128,9 +123,8 @@ async fn main() {
             )
             .await
             {
-                Ok(socket) => {
+                Ok(_) => {
                     info!("Congratulations, you have successfully reconnected to the v6 server!");
-                    task::spawn(ping_interval(tx.clone(), "v6".to_string(), socket.clone()));
                 }
                 Err(e) => {
                     error!(

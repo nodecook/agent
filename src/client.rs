@@ -41,11 +41,21 @@ pub async fn connect_server(
     api_key: String,
     node_id: Option<u16>,
 ) -> Result<rust_socketio::asynchronous::Client, rust_socketio::Error> {
+    let tx1 = tx.clone();
+    let server_type1 = server_type.clone();
     ClientBuilder::new(server)
         .transport_type(Websocket)
         .opening_header("Authorization", format!("Bearer {}", api_key))
         .opening_header("x-node-id", node_id.unwrap_or(0).to_string())
         .namespace("/agent")
+        .on("open", move |_, socket| {
+            let tx = tx.clone();
+            let server_type = server_type.clone();
+            async move {
+                task::spawn(ping_interval(tx, server_type, socket));
+            }
+            .boxed()
+        })
         .on("ping", |payload: Payload, socket: Client| {
             async move {
                 task::spawn(ping::ping(payload, socket));
@@ -77,8 +87,8 @@ pub async fn connect_server(
             .boxed()
         })
         .on("error", move |err, _| {
-            let tx = tx.clone();
-            let server_type = server_type.clone();
+            let tx = tx1.clone();
+            let server_type = server_type1.clone();
             async move {
                 let data = match err {
                     Payload::String(data) => data,
