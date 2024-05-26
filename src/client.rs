@@ -41,8 +41,6 @@ pub async fn connect_server(
     api_key: String,
     node_id: Option<u16>,
 ) -> Result<rust_socketio::asynchronous::Client, rust_socketio::Error> {
-    let tx1 = tx.clone();
-    let server_type1 = server_type.clone();
     ClientBuilder::new(server)
         .transport_type(Websocket)
         .opening_header("Authorization", format!("Bearer {}", api_key))
@@ -83,19 +81,6 @@ pub async fn connect_server(
         .on("http", |payload: Payload, socket: Client| {
             async move {
                 task::spawn(http::http(payload, socket));
-            }
-            .boxed()
-        })
-        .on("error", move |err, _| {
-            let tx = tx1.clone();
-            let server_type = server_type1.clone();
-            async move {
-                let data = match err {
-                    Payload::String(data) => data,
-                    Payload::Binary(data) => String::from_utf8_lossy(&data).to_string(),
-                };
-                error!("Server {server_type} disconnected: {data}");
-                send_server_error(tx, server_type).await;
             }
             .boxed()
         })
