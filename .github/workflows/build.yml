@@ -3,26 +3,59 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
 jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, ubuntu-20.04]
-    runs-on: ${{ matrix.os }}
+        include:
+          - target: x86_64-unknown-linux-musl
+            asset: nodecook-agent-x86_64-unknown-linux-musl
+            docker: messense/rust-musl-cross:x86_64-musl
+          - target: aarch64-unknown-linux-musl
+            asset: nodecook-agent-aarch64-unknown-linux-musl
+            docker: messense/rust-musl-cross:aarch64-musl
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions-rust-lang/setup-rust-toolchain@v1
-        if: matrix.os == 'ubuntu-20.04'
+        with:
+          target: ${{ matrix.target }}
+
       - uses: Swatinem/rust-cache@v2
-      - run: cargo build --release --target x86_64-unknown-linux-gnu
-      - name: echo sha256
-        run: sha256sum ./target/x86_64-unknown-linux-gnu/release/nodecook-agent
-      - name: Minio Deploy
+
+      - name: Build Linux binary
+        run: |
+          docker run --rm \
+            -v "$PWD":/home/rust/src \
+            -v "$HOME/.cargo/registry":/root/.cargo/registry \
+            ${{ matrix.docker }} \
+            cargo build --locked --release --target ${{ matrix.target }}
+
+      - name: Package binary
+        run: |
+          mkdir -p "dist/${{ matrix.asset }}"
+          cp "target/${{ matrix.target }}/release/nodecook-agent" "dist/${{ matrix.asset }}/nodecook-agent"
+          tar -C dist -czf "dist/${{ matrix.asset }}.tar.gz" "${{ matrix.asset }}"
+          sha256sum "dist/${{ matrix.asset }}.tar.gz" > "dist/${{ matrix.asset }}.tar.gz.sha256"
+
+      - name: Upload to S3
         uses: yakubique/minio-upload@v1.1.3
         with:
           endpoint: ${{ secrets.MINIO_ENDPOINT }}
           access_key: ${{ secrets.MINIO_ACCESS_KEY }}
           secret_key: ${{ secrets.MINIO_SECRET_KEY }}
           bucket: nodecook
-          source: ./target/x86_64-unknown-linux-gnu/release/nodecook-agent
-          target: ${{ matrix.os == 'ubuntu-latest' && '/agent' || '/agent-ubuntu-20.04'}}
+          source: dist/${{ matrix.asset }}.tar.gz
+          target: /${{ matrix.asset }}.tar.gz
+      - name: Upload checksum to S3
+        uses: yakubique/minio-upload@v1.1.3
+        with:
+          endpoint: ${{ secrets.MINIO_ENDPOINT }}
+          access_key: ${{ secrets.MINIO_ACCESS_KEY }}
+          secret_key: ${{ secrets.MINIO_SECRET_KEY }}
+          bucket: nodecook
+          source: dist/${{ matrix.asset }}.tar.gz.sha256
+          target: /${{ matrix.asset }}.tar.gz.sha256

@@ -47,8 +47,9 @@ async fn main() {
             tx.clone(),
             "v4".to_string(),
             v4_server.clone(),
-            args.api_key.clone(),
             v4_node_id,
+            args.title.clone(),
+            args.link.clone(),
         )
         .await
         {
@@ -65,8 +66,9 @@ async fn main() {
             tx.clone(),
             "v6".to_string(),
             v6_server.clone(),
-            args.api_key.clone(),
             v6_node_id,
+            args.title.clone(),
+            args.link.clone(),
         )
         .await
         {
@@ -95,8 +97,9 @@ async fn main() {
                 tx.clone(),
                 server_type.clone(),
                 v4_server.clone(),
-                args.api_key.clone(),
                 v4_node_id,
+                args.title.clone(),
+                args.link.clone(),
             )
             .await
             {
@@ -118,8 +121,9 @@ async fn main() {
                 tx.clone(),
                 server_type.clone(),
                 v6_server.clone(),
-                args.api_key.clone(),
                 v6_node_id,
+                args.title.clone(),
+                args.link.clone(),
             )
             .await
             {

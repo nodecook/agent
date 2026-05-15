@@ -10,41 +10,50 @@ This is the agent program of [NodeCook](https://www.nodecook.com). It is respons
 
 - **Lightweight**: Only a few system resources are needed.
 - **Fast**: Written in Rust, it is very fast.
-- **Secure**: It is safe to run the agent on your server and protect by api key.
 - **Open Source**: All source code is open source and you don't need to worry about the security.
 
 ## Installation
 
 You can install the agent by the following methods.
 
-First of all, you need to get the **api key** from the [NodeCook](https://www.nodecook.com/dashboard/apikey) website.
-
 ### Prerequisites
 
-- Docker or Docker Compose installed.
 - Firewall rules to allow Agent to access the server.
 
-### docker compose (recommended)
+### Linux / macOS (recommended)
 
 ```shell
-wget https://raw.githubusercontent.com/nodecook/agent/main/compose.yaml -O compose.yaml
-export NCA_API_KEY=your_api_key
-docker compose up -d
+curl -fsSL https://raw.githubusercontent.com/nodecook/agent/main/scripts/install.sh | sudo bash
 ```
 
-### docker
+The script downloads the latest binary from `dl.nodecook.com` and installs it as:
+
+- Linux: `systemd` service named `nodecook-agent`
+- macOS: `launchd` daemon named `com.nodecook.agent`
+
+You can pass configuration with environment variables:
 
 ```shell
-docker run -d --user=root --name nodecook-agent -e NCA_API_KEY=your_api_key --restart=always --network=host ghcr.io/nodecook/agent
+curl -fsSL https://raw.githubusercontent.com/nodecook/agent/main/scripts/install.sh | sudo NCA_TITLE="My Node" NCA_LINK="https://example.com" bash
+```
+
+### Windows
+
+Run PowerShell as Administrator:
+
+```powershell
+iwr https://raw.githubusercontent.com/nodecook/agent/main/scripts/install.ps1 -useb | iex
+```
+
+### Docker
+
+```shell
+docker run -d --user=root --name nodecook-agent --restart=always --network=host ghcr.io/nodecook/agent
 ```
 
 ## Configuration
 
 There are some environment variables you can use to configure the agent.
-
-### NCA_API_KEY
-
-The api key you get from the [NodeCook](https://www.nodecook.com/dashboard/apikey) website.
 
 ### NCA_DEBUG
 
@@ -58,11 +67,19 @@ If set to `true`, the agent will only use ipv4 to access the server. Default is 
 
 If set to `true`, the agent will only use ipv6 to access the server. Default is `false`.
 
+### NCA_TITLE
+
+The sponsor title displayed for this node.
+
+### NCA_LINK
+
+The sponsor link displayed for this node.
+
 ## Trubleshooting
 
 ### Why I can't see the agent in the dashboard?
 
-Please check your api key and the agent's status. If the agent is running, you can check the logs or set `NCA_DEBUG` to `true` to see the debug information.
+Please check the agent's status. If the agent is running, you can check the logs or set `NCA_DEBUG` to `true` to see the debug information.
 
 ### Why the agent run with root user?
 
@@ -78,10 +95,20 @@ No, the agent is written in Rust and only need a few system resources.
 
 ### How can I uninstall the agent?
 
-Just stop the container and remove it.
+Linux / macOS:
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/nodecook/agent/main/scripts/uninstall.sh | sudo bash
+```
+
+Windows PowerShell as Administrator:
+
+```powershell
+iwr https://raw.githubusercontent.com/nodecook/agent/main/scripts/uninstall.ps1 -useb | iex
+```
 
 ### How can I update the agent?
 
-If you use `docker compose`, you can just run `docker compose up -d --pull always` to update the agent. If you use docker, you can just pull the latest image and run the container again.
+Run the install script again. It will replace the binary and restart the service. If you use Docker, pull the latest image and run the container again.
 
 ### If you have any other questions, please feel free to [open an issue](https://github.com/nodecook/agent/issues/new)

@@ -20,9 +20,6 @@ pub struct Cli {
     /// IPv6 only mode
     #[arg(long, default_value_t = false, env = "NCA_V6_ONLY")]
     pub v6_only: bool,
-    /// API key comes from nodecook to know this node belongs to you
-    #[arg(short, long, env = "NCA_API_KEY")]
-    pub api_key: String,
     /// Enable debug mode
     #[arg(short, long, default_value_t = false, env = "NCA_DEBUG")]
     pub debug: bool,
@@ -32,4 +29,10 @@ pub struct Cli {
     /// IPv6 node id
     #[arg(long, env = "NCA_V6_NODE_ID")]
     pub v6_node_id: Option<u16>,
+    /// Advertise title for this node
+    #[arg(long, env = "NCA_TITLE")]
+    pub title: Option<String>,
+    /// Advertise link for this node
+    #[arg(long, env = "NCA_LINK")]
+    pub link: Option<String>,
 }

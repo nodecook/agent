@@ -38,14 +38,21 @@ pub async fn connect_server(
     tx: mpsc::Sender<String>,
     server_type: String,
     server: String,
-    api_key: String,
     node_id: Option<u16>,
+    title: Option<String>,
+    link: Option<String>,
 ) -> Result<rust_socketio::asynchronous::Client, rust_socketio::Error> {
-    ClientBuilder::new(server)
+    let mut builder = ClientBuilder::new(server)
         .transport_type(Websocket)
-        .opening_header("Authorization", format!("Bearer {}", api_key))
         .opening_header("x-node-id", node_id.unwrap_or(0).to_string())
-        .namespace("/agent")
+        .namespace("/agent");
+    if let Some(title) = title {
+        builder = builder.opening_header("x-title", title);
+    }
+    if let Some(link) = link {
+        builder = builder.opening_header("x-link", link);
+    }
+    builder
         .on("open", move |_, socket| {
             let tx = tx.clone();
             let server_type = server_type.clone();
