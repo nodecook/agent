@@ -21,3 +21,4 @@ hickory-resolver = "0.24.0"
 tracert = "0.7"
 url = "2.5.0"
 futures-util = "0.3.30"
+openssl = { version = "0.10", features = ["vendored"] }
