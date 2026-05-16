@@ -3,7 +3,9 @@ ARG BUILDER_IMAGE=messense/rust-musl-cross:x86_64-musl
 
 FROM ${BUILDER_IMAGE} AS chef
 WORKDIR /home/rust/src
-RUN cargo install cargo-chef --locked
+# messense images set CARGO_BUILD_TARGET to the cross target, which would
+# make `cargo install` build cargo-chef for that target instead of the host.
+RUN env -u CARGO_BUILD_TARGET cargo install cargo-chef --locked
 
 FROM chef AS planner
 COPY . .
