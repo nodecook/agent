@@ -12,48 +12,32 @@ jobs:
         include:
           - target: x86_64-unknown-linux-musl
             asset: nodecook-agent-x86_64-unknown-linux-musl
-            docker: messense/rust-musl-cross:x86_64-musl
+            builder_image: messense/rust-musl-cross:x86_64-musl
           - target: aarch64-unknown-linux-musl
             asset: nodecook-agent-aarch64-unknown-linux-musl
-            docker: messense/rust-musl-cross:aarch64-musl
+            builder_image: messense/rust-musl-cross:aarch64-musl
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build binary
+        uses: docker/build-push-action@v6
         with:
-          target: ${{ matrix.target }}
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Cache Docker image
-        id: docker-cache
-        uses: actions/cache@v4
-        with:
-          path: /tmp/docker-image.tar
-          key: docker-${{ matrix.docker }}-v1
-
-      - name: Load or pull Docker image
-        run: |
-          if [ -f /tmp/docker-image.tar ]; then
-            docker load -i /tmp/docker-image.tar
-          else
-            docker pull ${{ matrix.docker }}
-            docker save ${{ matrix.docker }} -o /tmp/docker-image.tar
-          fi
-
-      - name: Build Linux binary
-        run: |
-          docker run --rm \
-            -v "$PWD":/home/rust/src \
-            -v "$HOME/.cargo/registry":/root/.cargo/registry \
-            ${{ matrix.docker }} \
-            cargo build --locked --release --target ${{ matrix.target }}
+          context: .
+          target: output
+          build-args: |
+            BUILDER_IMAGE=${{ matrix.builder_image }}
+            TARGET=${{ matrix.target }}
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
+          outputs: type=local,dest=build-out
 
       - name: Package binary
         run: |
           mkdir -p "dist/${{ matrix.asset }}"
-          cp "target/${{ matrix.target }}/release/nodecook-agent" "dist/${{ matrix.asset }}/nodecook-agent"
+          cp build-out/nodecook-agent "dist/${{ matrix.asset }}/nodecook-agent"
           tar -C dist -czf "dist/${{ matrix.asset }}.tar.gz" "${{ matrix.asset }}"
           sha256sum "dist/${{ matrix.asset }}.tar.gz" > "dist/${{ matrix.asset }}.tar.gz.sha256"
 
