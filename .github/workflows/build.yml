@@ -26,6 +26,22 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      - name: Cache Docker image
+        id: docker-cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/docker-image.tar
+          key: docker-${{ matrix.docker }}-v1
+
+      - name: Load or pull Docker image
+        run: |
+          if [ -f /tmp/docker-image.tar ]; then
+            docker load -i /tmp/docker-image.tar
+          else
+            docker pull ${{ matrix.docker }}
+            docker save ${{ matrix.docker }} -o /tmp/docker-image.tar
+          fi
+
       - name: Build Linux binary
         run: |
           docker run --rm \
@@ -41,14 +57,26 @@ jobs:
           tar -C dist -czf "dist/${{ matrix.asset }}.tar.gz" "${{ matrix.asset }}"
           sha256sum "dist/${{ matrix.asset }}.tar.gz" > "dist/${{ matrix.asset }}.tar.gz.sha256"
 
+      - name: Cache mc binary
+        id: mc-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin/mc
+          key: mc-binary-linux-amd64-v1
+
+      - name: Install mc
+        if: steps.mc-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/.local/bin
+          curl -sSL https://dl.min.io/client/mc/release/linux-amd64/mc -o ~/.local/bin/mc
+          chmod +x ~/.local/bin/mc
+
       - name: Upload to MinIO
         env:
           MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }}
           MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
           MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
         run: |
-          curl -sSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
-          chmod +x /usr/local/bin/mc
-          mc alias set s3 "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
-          mc cp "dist/${{ matrix.asset }}.tar.gz" "s3/nodecook/${{ matrix.asset }}.tar.gz"
-          mc cp "dist/${{ matrix.asset }}.tar.gz.sha256" "s3/nodecook/${{ matrix.asset }}.tar.gz.sha256"
+          ~/.local/bin/mc alias set s3 "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
+          ~/.local/bin/mc cp "dist/${{ matrix.asset }}.tar.gz" "s3/nodecook/${{ matrix.asset }}.tar.gz"
+          ~/.local/bin/mc cp "dist/${{ matrix.asset }}.tar.gz.sha256" "s3/nodecook/${{ matrix.asset }}.tar.gz.sha256"
