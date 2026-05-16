@@ -7,6 +7,20 @@ INSTALL_DIR="${NODECOOK_AGENT_INSTALL_DIR:-/usr/local/bin}"
 ENV_FILE="${NODECOOK_AGENT_ENV_FILE:-/etc/nodecook-agent.env}"
 SERVICE_NAME="nodecook-agent"
 
+ENV_KEYS=(NCA_DEBUG NCA_V4_ONLY NCA_V6_ONLY NCA_V4_SERVER NCA_V6_SERVER NCA_V4_NODE_ID NCA_V6_NODE_ID NCA_TITLE NCA_LINK)
+
+is_installed() {
+  [ -x "$INSTALL_DIR/$BIN_NAME" ]
+}
+
+has_env_vars() {
+  local key
+  for key in "${ENV_KEYS[@]}"; do
+    [ -n "${!key:-}" ] && return 0
+  done
+  return 1
+}
+
 need_root() {
   if [ "$(id -u)" -ne 0 ]; then
     echo "Please run as root, for example: sudo $0"
@@ -22,16 +36,13 @@ need_cmd() {
 }
 
 target() {
-  local os arch
-  os="$(uname -s)"
+  local arch
   arch="$(uname -m)"
-  case "$os:$arch" in
-    Linux:x86_64|Linux:amd64) echo "x86_64-unknown-linux-musl" ;;
-    Linux:aarch64|Linux:arm64) echo "aarch64-unknown-linux-musl" ;;
-    Darwin:x86_64) echo "x86_64-apple-darwin" ;;
-    Darwin:arm64|Darwin:aarch64) echo "aarch64-apple-darwin" ;;
+  case "$arch" in
+    x86_64|amd64) echo "x86_64-unknown-linux-musl" ;;
+    aarch64|arm64) echo "aarch64-unknown-linux-musl" ;;
     *)
-      echo "Unsupported platform: $os $arch" >&2
+      echo "Unsupported architecture: $arch" >&2
       echo "Use Docker instead: docker run -d --user=root --name nodecook-agent --restart=always --network=host ghcr.io/nodecook/agent" >&2
       exit 1
       ;;
@@ -44,17 +55,12 @@ download_url() {
 }
 
 write_env_file() {
+  local key
   mkdir -p "$(dirname "$ENV_FILE")"
   {
-    write_systemd_env NCA_DEBUG
-    write_systemd_env NCA_V4_ONLY
-    write_systemd_env NCA_V6_ONLY
-    write_systemd_env NCA_V4_SERVER
-    write_systemd_env NCA_V6_SERVER
-    write_systemd_env NCA_V4_NODE_ID
-    write_systemd_env NCA_V6_NODE_ID
-    write_systemd_env NCA_TITLE
-    write_systemd_env NCA_LINK
+    for key in "${ENV_KEYS[@]}"; do
+      write_systemd_env "$key"
+    done
   } > "$ENV_FILE"
 }
 
@@ -102,83 +108,33 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
   systemctl daemon-reload
-  systemctl enable --now "$SERVICE_NAME"
-}
-
-plist_env() {
-  local key value
-  for key in NCA_DEBUG NCA_V4_ONLY NCA_V6_ONLY NCA_V4_SERVER NCA_V6_SERVER NCA_V4_NODE_ID NCA_V6_NODE_ID NCA_TITLE NCA_LINK; do
-    value="${!key:-}"
-    [ "$value" = "" ] && continue
-    value="$(xml_escape "$value")"
-    printf '    <key>%s</key>\n    <string>%s</string>\n' "$key" "$value"
-  done
-}
-
-xml_escape() {
-  local value="$1"
-  value="${value//&/&amp;}"
-  value="${value//</&lt;}"
-  value="${value//>/&gt;}"
-  value="${value//\"/&quot;}"
-  value="${value//\'/&apos;}"
-  printf '%s' "$value"
-}
-
-install_launchd() {
-  local plist="/Library/LaunchDaemons/com.nodecook.agent.plist"
-  {
-    cat <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>com.nodecook.agent</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>${INSTALL_DIR}/${BIN_NAME}</string>
-  </array>
-  <key>RunAtLoad</key>
-  <true/>
-  <key>KeepAlive</key>
-  <true/>
-EOF
-    if [ -n "${NCA_DEBUG:-}${NCA_V4_ONLY:-}${NCA_V6_ONLY:-}${NCA_V4_SERVER:-}${NCA_V6_SERVER:-}${NCA_V4_NODE_ID:-}${NCA_V6_NODE_ID:-}${NCA_TITLE:-}${NCA_LINK:-}" ]; then
-      echo "  <key>EnvironmentVariables</key>"
-      echo "  <dict>"
-      plist_env
-      echo "  </dict>"
-    fi
-    cat <<EOF
-</dict>
-</plist>
-EOF
-  } > "$plist"
-  chown root:wheel "$plist"
-  chmod 0644 "$plist"
-  launchctl bootout system "$plist" >/dev/null 2>&1 || true
-  launchctl bootstrap system "$plist"
-  launchctl enable system/com.nodecook.agent
+  systemctl enable "$SERVICE_NAME"
+  systemctl restart "$SERVICE_NAME"
 }
 
 main() {
   need_root
+  need_cmd systemctl
   mkdir -p "$INSTALL_DIR"
+
+  local mode="install"
+  if is_installed; then
+    mode="upgrade"
+    echo "Existing NodeCook Agent detected, upgrading..."
+  fi
+
   install_binary
 
-  case "$(uname -s)" in
-    Linux)
-      need_cmd systemctl
-      write_env_file
-      install_systemd
-      ;;
-    Darwin)
-      install_launchd
-      ;;
-  esac
+  if [ "$mode" = "install" ] || has_env_vars; then
+    write_env_file
+  fi
+  install_systemd
 
-  echo "NodeCook Agent installed."
+  if [ "$mode" = "upgrade" ]; then
+    echo "NodeCook Agent upgraded."
+  else
+    echo "NodeCook Agent installed."
+  fi
 }
 
 main "$@"

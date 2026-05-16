@@ -20,29 +20,18 @@
 
 - 防火墙规则允许 Agent 访问服务器。
 
-### Linux / macOS（推荐）
+### Linux（推荐）
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/nodecook/agent/main/scripts/install.sh | sudo bash
 ```
 
-脚本会从 `dl.nodecook.com` 下载最新二进制，并安装为：
-
-- Linux：名为 `nodecook-agent` 的 `systemd` 服务
-- macOS：名为 `com.nodecook.agent` 的 `launchd` 守护进程
+脚本会从 `dl.nodecook.com` 下载最新二进制，并安装为名为 `nodecook-agent` 的 `systemd` 服务。重复执行相同命令会原地升级：替换二进制并重启服务；若未传入新的 `NCA_*` 环境变量，则保留现有的环境变量文件。
 
 可以通过环境变量传入配置：
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/nodecook/agent/main/scripts/install.sh | sudo NCA_TITLE="My Node" NCA_LINK="https://example.com" bash
-```
-
-### Windows
-
-以管理员身份运行 PowerShell：
-
-```powershell
-iwr https://raw.githubusercontent.com/nodecook/agent/main/scripts/install.ps1 -useb | iex
 ```
 
 ### Docker
@@ -95,20 +84,12 @@ docker run -d --user=root --name nodecook-agent --restart=always --network=host 
 
 ### 如何卸载代理程序？
 
-Linux / macOS：
-
 ```shell
 curl -fsSL https://raw.githubusercontent.com/nodecook/agent/main/scripts/uninstall.sh | sudo bash
 ```
 
-Windows 请以管理员身份运行 PowerShell：
-
-```powershell
-iwr https://raw.githubusercontent.com/nodecook/agent/main/scripts/uninstall.ps1 -useb | iex
-```
-
 ### 如何更新代理程序？
 
-重新运行安装脚本即可。它会替换二进制并重启服务。如果您使用 Docker，拉取最新镜像并重新运行容器即可。
+重新运行安装脚本即可。它会替换二进制并重启服务，同时保留现有的环境变量文件。如果您使用 Docker，拉取最新镜像并重新运行容器即可。
 
 ### 如果您有任何其他问题，请随时 [打开一个 issue](https://github.com/nodecook/agent/issues/new)

@@ -11,24 +11,11 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
-case "$(uname -s)" in
-  Linux)
-    if command -v systemctl >/dev/null 2>&1; then
-      systemctl disable --now "$SERVICE_NAME" >/dev/null 2>&1 || true
-      rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
-      systemctl daemon-reload >/dev/null 2>&1 || true
-    fi
-    ;;
-  Darwin)
-    plist="/Library/LaunchDaemons/com.nodecook.agent.plist"
-    launchctl bootout system "$plist" >/dev/null 2>&1 || true
-    rm -f "$plist"
-    ;;
-  *)
-    echo "Unsupported platform: $(uname -s)"
-    exit 1
-    ;;
-esac
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl disable --now "$SERVICE_NAME" >/dev/null 2>&1 || true
+  rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
+  systemctl daemon-reload >/dev/null 2>&1 || true
+fi
 
 rm -f "$INSTALL_DIR/$BIN_NAME"
 rm -f "$ENV_FILE"

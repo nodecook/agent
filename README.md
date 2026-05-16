@@ -20,29 +20,18 @@ You can install the agent by the following methods.
 
 - Firewall rules to allow Agent to access the server.
 
-### Linux / macOS (recommended)
+### Linux (recommended)
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/nodecook/agent/main/scripts/install.sh | sudo bash
 ```
 
-The script downloads the latest binary from `dl.nodecook.com` and installs it as:
-
-- Linux: `systemd` service named `nodecook-agent`
-- macOS: `launchd` daemon named `com.nodecook.agent`
+The script downloads the latest binary from `dl.nodecook.com` and installs it as a `systemd` service named `nodecook-agent`. Re-running the same command upgrades the existing installation in place: the binary is replaced and the service is restarted, while the existing environment file is preserved unless you pass new `NCA_*` variables.
 
 You can pass configuration with environment variables:
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/nodecook/agent/main/scripts/install.sh | sudo NCA_TITLE="My Node" NCA_LINK="https://example.com" bash
-```
-
-### Windows
-
-Run PowerShell as Administrator:
-
-```powershell
-iwr https://raw.githubusercontent.com/nodecook/agent/main/scripts/install.ps1 -useb | iex
 ```
 
 ### Docker
@@ -95,20 +84,12 @@ No, the agent is written in Rust and only need a few system resources.
 
 ### How can I uninstall the agent?
 
-Linux / macOS:
-
 ```shell
 curl -fsSL https://raw.githubusercontent.com/nodecook/agent/main/scripts/uninstall.sh | sudo bash
 ```
 
-Windows PowerShell as Administrator:
-
-```powershell
-iwr https://raw.githubusercontent.com/nodecook/agent/main/scripts/uninstall.ps1 -useb | iex
-```
-
 ### How can I update the agent?
 
-Run the install script again. It will replace the binary and restart the service. If you use Docker, pull the latest image and run the container again.
+Run the install script again. It will replace the binary and restart the service while preserving your environment file. If you use Docker, pull the latest image and run the container again.
 
 ### If you have any other questions, please feel free to [open an issue](https://github.com/nodecook/agent/issues/new)
