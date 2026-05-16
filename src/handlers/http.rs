@@ -73,6 +73,16 @@ pub async fn http(payload: Payload, socket: SocketClient) -> Result<(), rust_soc
     match res {
         Ok(res) => {
             let status = res.status().as_u16();
+            let headers: serde_json::Map<String, Value> = res
+                .headers()
+                .iter()
+                .map(|(name, value)| {
+                    (
+                        name.as_str().to_string(),
+                        Value::String(value.to_str().unwrap_or("").to_string()),
+                    )
+                })
+                .collect();
             socket
                 .emit(
                     event,
@@ -83,6 +93,7 @@ pub async fn http(payload: Payload, socket: SocketClient) -> Result<(), rust_soc
                         "ip": ip,
                         "dns_duration": dns_duration,
                         "status": status,
+                        "headers": headers,
                     }),
                 )
                 .await?;
