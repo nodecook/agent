@@ -22,3 +22,7 @@ tracert = "0.7"
 url = "2.5.0"
 futures-util = "0.3.30"
 openssl = { version = "0.10", features = ["vendored"] }
+sha2 = "0.10"
+tar = "0.4"
+flate2 = "1.0"
+anyhow = "1.0"

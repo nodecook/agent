@@ -4,6 +4,7 @@ mod constant;
 mod dns_resolve;
 mod errors;
 mod handlers;
+mod upgrade;
 mod utils;
 use crate::client::{connect_server, send_server_error};
 use crate::constant::V4_SERVER;
@@ -29,6 +30,7 @@ async fn main() {
         error!("ipv4_only and ipv6_only can't be true at the same time");
         exit(1);
     }
+    upgrade::spawn();
     let (tx, mut rx) = mpsc::channel::<String>(10);
     let mut v4_ok = false;
     let mut v6_ok = false;

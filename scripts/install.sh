@@ -5,6 +5,8 @@ DOWNLOAD_BASE_URL="${NODECOOK_AGENT_DOWNLOAD_BASE_URL:-https://dl.nodecook.com}"
 BIN_NAME="nodecook-agent"
 INSTALL_DIR="${NODECOOK_AGENT_INSTALL_DIR:-/usr/local/bin}"
 ENV_FILE="${NODECOOK_AGENT_ENV_FILE:-/etc/nodecook-agent.env}"
+STATE_DIR="${NODECOOK_AGENT_STATE_DIR:-/var/lib/nodecook-agent}"
+STATE_FILE="${STATE_DIR}/installed.sha256"
 SERVICE_NAME="nodecook-agent"
 
 ENV_KEYS=(NCA_DEBUG NCA_V4_ONLY NCA_V6_ONLY NCA_V4_SERVER NCA_V6_SERVER NCA_TITLE NCA_LINK)
@@ -74,11 +76,12 @@ write_systemd_env() {
 }
 
 install_binary() {
-  local target asset tmp url
+  local target asset tmp url sha_url sha
   target="$(target)"
   asset="${BIN_NAME}-${target}"
   tmp="$(mktemp -d)"
   url="$(download_url "$asset")"
+  sha_url="${url}.sha256"
 
   need_cmd curl
   need_cmd tar
@@ -88,6 +91,14 @@ install_binary() {
   tar -xzf "$tmp/${asset}.tar.gz" -C "$tmp"
   install -m 0755 "$tmp/$asset/$BIN_NAME" "$INSTALL_DIR/$BIN_NAME"
   rm -rf "$tmp"
+
+  # 写入 sha 基线，让 agent 启动时不会把"已经是最新版"误判为需要升级
+  if sha="$(curl -fsSL "$sha_url" 2>/dev/null | awk '{print $1}')" && [ -n "$sha" ]; then
+    mkdir -p "$STATE_DIR"
+    printf '%s\n' "$sha" > "$STATE_FILE"
+  else
+    echo "Warning: failed to fetch $sha_url; agent will record baseline on next start." >&2
+  fi
 }
 
 install_systemd() {

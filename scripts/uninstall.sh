@@ -4,6 +4,7 @@ set -euo pipefail
 BIN_NAME="nodecook-agent"
 INSTALL_DIR="${NODECOOK_AGENT_INSTALL_DIR:-/usr/local/bin}"
 ENV_FILE="${NODECOOK_AGENT_ENV_FILE:-/etc/nodecook-agent.env}"
+STATE_DIR="${NODECOOK_AGENT_STATE_DIR:-/var/lib/nodecook-agent}"
 SERVICE_NAME="nodecook-agent"
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -19,5 +20,6 @@ fi
 
 rm -f "$INSTALL_DIR/$BIN_NAME"
 rm -f "$ENV_FILE"
+rm -rf "$STATE_DIR"
 
 echo "NodeCook Agent uninstalled."

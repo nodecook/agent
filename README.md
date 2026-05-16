@@ -64,6 +64,17 @@ The sponsor title displayed for this node.
 
 The sponsor link displayed for this node.
 
+## Auto upgrade
+
+The agent automatically keeps itself up to date — no configuration
+required. After a random 1–60 minute delay at startup (to spread fleet
+load) it checks `dl.nodecook.com` every hour, and when a new binary is
+published it downloads the tarball, verifies the sha256, atomically
+swaps the binary in place, and exits so `systemd` restarts the service.
+State is persisted under `/var/lib/nodecook-agent/installed.sha256`.
+Network errors are logged and the next check is retried at the regular
+hourly interval; a failed download never affects the running agent.
+
 ## Trubleshooting
 
 ### Why I can't see the agent in the dashboard?
