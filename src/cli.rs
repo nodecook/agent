@@ -23,12 +23,6 @@ pub struct Cli {
     /// Enable debug mode
     #[arg(short, long, default_value_t = false, env = "NCA_DEBUG")]
     pub debug: bool,
-    /// IPv4 node id
-    #[arg(long, env = "NCA_V4_NODE_ID")]
-    pub v4_node_id: Option<u16>,
-    /// IPv6 node id
-    #[arg(long, env = "NCA_V6_NODE_ID")]
-    pub v6_node_id: Option<u16>,
     /// Advertise title for this node
     #[arg(long, env = "NCA_TITLE")]
     pub title: Option<String>,

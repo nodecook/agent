@@ -38,25 +38,26 @@ pub async fn connect_server(
     tx: mpsc::Sender<String>,
     server_type: String,
     server: String,
-    node_id: Option<u16>,
     title: Option<String>,
     link: Option<String>,
 ) -> Result<rust_socketio::asynchronous::Client, rust_socketio::Error> {
-    let mut builder = ClientBuilder::new(server)
+    ClientBuilder::new(server)
         .transport_type(Websocket)
-        .opening_header("x-node-id", node_id.unwrap_or(0).to_string())
-        .namespace("/agent");
-    if let Some(title) = title {
-        builder = builder.opening_header("x-title", title);
-    }
-    if let Some(link) = link {
-        builder = builder.opening_header("x-link", link);
-    }
-    builder
+        .namespace("/agent")
         .on("open", move |_, socket| {
             let tx = tx.clone();
             let server_type = server_type.clone();
+            let title = title.clone();
+            let link = link.clone();
             async move {
+                if title.is_some() || link.is_some() {
+                    if let Err(err) = socket
+                        .emit("advertise", json!({ "title": title, "link": link }))
+                        .await
+                    {
+                        error!("advertise emit failed: {err}");
+                    }
+                }
                 task::spawn(ping_interval(tx, server_type, socket));
             }
             .boxed()

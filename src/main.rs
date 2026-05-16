@@ -40,14 +40,11 @@ async fn main() {
         .v6_server
         .clone()
         .unwrap_or_else(|| V6_SERVER.to_string());
-    let v4_node_id = args.v4_node_id;
-    let v6_node_id = args.v6_node_id;
     if !args.v6_only {
         match connect_server(
             tx.clone(),
             "v4".to_string(),
             v4_server.clone(),
-            v4_node_id,
             args.title.clone(),
             args.link.clone(),
         )
@@ -66,7 +63,6 @@ async fn main() {
             tx.clone(),
             "v6".to_string(),
             v6_server.clone(),
-            v6_node_id,
             args.title.clone(),
             args.link.clone(),
         )
@@ -97,7 +93,6 @@ async fn main() {
                 tx.clone(),
                 server_type.clone(),
                 v4_server.clone(),
-                v4_node_id,
                 args.title.clone(),
                 args.link.clone(),
             )
@@ -121,7 +116,6 @@ async fn main() {
                 tx.clone(),
                 server_type.clone(),
                 v6_server.clone(),
-                v6_node_id,
                 args.title.clone(),
                 args.link.clone(),
             )
