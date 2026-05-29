@@ -1,5 +1,8 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+# POSIX sh so it also runs under BusyBox ash (OpenWRT) without requiring bash.
+set -eu
+# Enable pipefail only when the shell supports it (bash / recent ash); dash does not.
+if ( set -o pipefail ) 2>/dev/null; then set -o pipefail; fi
 
 DOWNLOAD_BASE_URL="${NODECOOK_AGENT_DOWNLOAD_BASE_URL:-https://dl.nodecook.com}"
 BIN_NAME="nodecook-agent"
@@ -7,18 +10,19 @@ INSTALL_DIR="${NODECOOK_AGENT_INSTALL_DIR:-/usr/local/bin}"
 ENV_FILE="${NODECOOK_AGENT_ENV_FILE:-/etc/nodecook-agent.env}"
 STATE_DIR="${NODECOOK_AGENT_STATE_DIR:-/var/lib/nodecook-agent}"
 STATE_FILE="${STATE_DIR}/installed.sha256"
+INITD_DIR="${NODECOOK_AGENT_INITD_DIR:-/etc/init.d}"
 SERVICE_NAME="nodecook-agent"
 
-ENV_KEYS=(NCA_DEBUG NCA_V4_ONLY NCA_V6_ONLY NCA_V4_SERVER NCA_V6_SERVER NCA_TITLE NCA_LINK)
+ENV_KEYS="NCA_DEBUG NCA_V4_ONLY NCA_V6_ONLY NCA_V4_SERVER NCA_V6_SERVER NCA_TITLE NCA_LINK"
 
 is_installed() {
   [ -x "$INSTALL_DIR/$BIN_NAME" ]
 }
 
 has_env_vars() {
-  local key
-  for key in "${ENV_KEYS[@]}"; do
-    [ -n "${!key:-}" ] && return 0
+  for key in $ENV_KEYS; do
+    eval "value=\${$key:-}"
+    [ -n "$value" ] && return 0
   done
   return 1
 }
@@ -37,8 +41,18 @@ need_cmd() {
   fi
 }
 
+# Detect the service manager so we install the right kind of service.
+detect_init() {
+  if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then
+    echo systemd
+  elif [ -x /sbin/procd ] || command -v procd >/dev/null 2>&1; then
+    echo procd
+  else
+    echo none
+  fi
+}
+
 target() {
-  local arch
   arch="$(uname -m)"
   case "$arch" in
     x86_64|amd64) echo "x86_64-unknown-linux-musl" ;;
@@ -52,31 +66,30 @@ target() {
 }
 
 download_url() {
-  local asset="$1"
+  asset="$1"
   echo "${DOWNLOAD_BASE_URL%/}/${asset}.tar.gz"
 }
 
 write_env_file() {
-  local key
   mkdir -p "$(dirname "$ENV_FILE")"
   {
-    for key in "${ENV_KEYS[@]}"; do
-      write_systemd_env "$key"
+    for key in $ENV_KEYS; do
+      write_env_line "$key"
     done
   } > "$ENV_FILE"
 }
 
-write_systemd_env() {
-  local key="$1"
-  local value="${!key:-}"
-  [ "$value" = "" ] && return
-  value="${value//\\/\\\\}"
-  value="${value//\"/\\\"}"
+# Emit KEY="value" for one variable. The quoting round-trips correctly both
+# through systemd's EnvironmentFile parser and through `.`-sourcing in sh.
+write_env_line() {
+  key="$1"
+  eval "value=\${$key:-}"
+  [ -z "$value" ] && return 0
+  value="$(printf '%s' "$value" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
   printf '%s="%s"\n' "$key" "$value"
 }
 
 install_binary() {
-  local target asset tmp url sha_url sha
   target="$(target)"
   asset="${BIN_NAME}-${target}"
   tmp="$(mktemp -d)"
@@ -89,7 +102,15 @@ install_binary() {
   echo "Downloading $url"
   curl -fsSL "$url" -o "$tmp/${asset}.tar.gz"
   tar -xzf "$tmp/${asset}.tar.gz" -C "$tmp"
-  install -m 0755 "$tmp/$asset/$BIN_NAME" "$INSTALL_DIR/$BIN_NAME"
+
+  # Atomic swap: write to a temp file in the install dir, then rename over the
+  # destination. Renaming (not truncating in place) avoids "Text file busy"
+  # when upgrading while the old binary is still running.
+  mkdir -p "$INSTALL_DIR"
+  new_bin="${INSTALL_DIR}/.${BIN_NAME}.new.$$"
+  cp "$tmp/$asset/$BIN_NAME" "$new_bin"
+  chmod 0755 "$new_bin"
+  mv -f "$new_bin" "$INSTALL_DIR/$BIN_NAME"
   rm -rf "$tmp"
 
   # 写入 sha 基线，让 agent 启动时不会把"已经是最新版"误判为需要升级
@@ -123,12 +144,54 @@ EOF
   systemctl restart "$SERVICE_NAME"
 }
 
+# OpenWRT init script. `respawn` mirrors systemd's Restart=always, so the
+# agent's self-upgrade (which exits and expects to be restarted) keeps working.
+install_procd() {
+  mkdir -p "$INITD_DIR"
+  init_file="${INITD_DIR}/${SERVICE_NAME}"
+  {
+    cat <<EOF
+#!/bin/sh /etc/rc.common
+
+USE_PROCD=1
+START=99
+STOP=10
+
+ENV_FILE="${ENV_FILE}"
+
+start_service() {
+    [ -f "\$ENV_FILE" ] && . "\$ENV_FILE"
+    procd_open_instance
+    procd_set_param command "${INSTALL_DIR}/${BIN_NAME}"
+EOF
+    for key in $ENV_KEYS; do
+      printf '    [ -n "${%s:-}" ] && procd_append_param env "%s=$%s"\n' "$key" "$key" "$key"
+    done
+    cat <<'EOF'
+    procd_set_param respawn
+    procd_set_param stdout 1
+    procd_set_param stderr 1
+    procd_close_instance
+}
+EOF
+  } > "$init_file"
+  chmod 0755 "$init_file"
+  "$init_file" enable
+  "$init_file" restart
+}
+
 main() {
   need_root
-  need_cmd systemctl
   mkdir -p "$INSTALL_DIR"
 
-  local mode="install"
+  init_sys="$(detect_init)"
+  if [ "$init_sys" = "none" ]; then
+    echo "No supported service manager found (need systemd or procd/OpenWRT)." >&2
+    echo "Install the binary manually and run ${INSTALL_DIR}/${BIN_NAME} under your own supervisor." >&2
+    exit 1
+  fi
+
+  mode="install"
   if is_installed; then
     mode="upgrade"
     echo "Existing NodeCook Agent detected, upgrading..."
@@ -139,12 +202,16 @@ main() {
   if [ "$mode" = "install" ] || has_env_vars; then
     write_env_file
   fi
-  install_systemd
+
+  case "$init_sys" in
+    systemd) install_systemd ;;
+    procd) install_procd ;;
+  esac
 
   if [ "$mode" = "upgrade" ]; then
-    echo "NodeCook Agent upgraded."
+    echo "NodeCook Agent upgraded (${init_sys})."
   else
-    echo "NodeCook Agent installed."
+    echo "NodeCook Agent installed (${init_sys})."
   fi
 }
 

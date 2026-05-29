@@ -26,13 +26,23 @@ You can install the agent by the following methods.
 curl -fsSL https://raw.githubusercontent.com/nodecook/agent/main/scripts/install.sh | sudo bash
 ```
 
-The script downloads the latest binary from `dl.nodecook.com` and installs it as a `systemd` service named `nodecook-agent`. Re-running the same command upgrades the existing installation in place: the binary is replaced and the service is restarted, while the existing environment file is preserved unless you pass new `NCA_*` variables.
+The script downloads the latest binary from `dl.nodecook.com` and installs it as a service named `nodecook-agent`. It auto-detects the service manager: `systemd` on most distributions, or `procd` on OpenWRT (installing `/etc/init.d/nodecook-agent`). Re-running the same command upgrades the existing installation in place: the binary is replaced and the service is restarted, while the existing environment file is preserved unless you pass new `NCA_*` variables.
 
 You can pass configuration with environment variables:
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/nodecook/agent/main/scripts/install.sh | sudo NCA_TITLE="My Node" NCA_LINK="https://example.com" bash
 ```
+
+### OpenWRT
+
+OpenWRT uses BusyBox (no `bash`/`sudo` by default) and `procd` instead of `systemd`. Run as root with `sh`:
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/nodecook/agent/main/scripts/install.sh | sh
+```
+
+The script detects `procd`, installs `/etc/init.d/nodecook-agent`, and enables it on boot. Logs go to the system log — view them with `logread -e nodecook-agent`. The musl binary is published for `x86_64` and `aarch64`; on other router architectures use Docker.
 
 ### Docker
 
@@ -70,7 +80,8 @@ The agent automatically keeps itself up to date — no configuration
 required. After a random 1–60 minute delay at startup (to spread fleet
 load) it checks `dl.nodecook.com` every hour, and when a new binary is
 published it downloads the tarball, verifies the sha256, atomically
-swaps the binary in place, and exits so `systemd` restarts the service.
+swaps the binary in place, and exits so the service manager (`systemd`
+`Restart=always` or `procd` `respawn`) restarts the service.
 State is persisted under `/var/lib/nodecook-agent/installed.sha256`.
 Network errors are logged and the next check is retried at the regular
 hourly interval; a failed download never affects the running agent.

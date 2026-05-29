@@ -178,10 +178,10 @@ async fn check_and_upgrade(target: &'static str, state_path: &Path) -> Result<()
             // 状态文件在 binary 替换成功后再写，否则中途失败下次仍会重试
             write_state(state_path, &remote_sha)?;
             info!(
-                "upgraded {}; exiting so systemd can restart with the new binary",
+                "upgraded {}; exiting so the service manager can restart with the new binary",
                 path.display()
             );
-            // systemd 配置了 Restart=always，进程退出会被自动拉起
+            // systemd 的 Restart=always 或 procd 的 respawn 会在进程退出后自动拉起
             std::process::exit(0);
         }
     }

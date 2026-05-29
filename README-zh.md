@@ -26,13 +26,23 @@
 curl -fsSL https://raw.githubusercontent.com/nodecook/agent/main/scripts/install.sh | sudo bash
 ```
 
-脚本会从 `dl.nodecook.com` 下载最新二进制，并安装为名为 `nodecook-agent` 的 `systemd` 服务。重复执行相同命令会原地升级：替换二进制并重启服务；若未传入新的 `NCA_*` 环境变量，则保留现有的环境变量文件。
+脚本会从 `dl.nodecook.com` 下载最新二进制，并安装为名为 `nodecook-agent` 的服务。它会自动识别服务管理器：大多数发行版使用 `systemd`，OpenWRT 则使用 `procd`（安装 `/etc/init.d/nodecook-agent`）。重复执行相同命令会原地升级：替换二进制并重启服务；若未传入新的 `NCA_*` 环境变量，则保留现有的环境变量文件。
 
 可以通过环境变量传入配置：
 
 ```shell
 curl -fsSL https://raw.githubusercontent.com/nodecook/agent/main/scripts/install.sh | sudo NCA_TITLE="My Node" NCA_LINK="https://example.com" bash
 ```
+
+### OpenWRT
+
+OpenWRT 使用 BusyBox（默认没有 `bash`/`sudo`），且用 `procd` 而非 `systemd`。请以 root 用 `sh` 运行：
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/nodecook/agent/main/scripts/install.sh | sh
+```
+
+脚本会识别到 `procd`，安装 `/etc/init.d/nodecook-agent` 并设为开机自启。日志写入系统日志，可用 `logread -e nodecook-agent` 查看。musl 二进制仅发布 `x86_64` 和 `aarch64`；其他路由器架构请使用 Docker。
 
 ### Docker
 
@@ -69,7 +79,8 @@ docker run -d --user=root --name nodecook-agent --restart=always --network=host 
 Agent 内置自动升级，无需任何配置。启动后会随机延迟 1–60 分钟
 （避免全网节点同时拉取 `dl.nodecook.com`），然后每小时检查一次：发现
 新二进制后会下载 tarball，校验 sha256，原子替换当前二进制并退出，
-由 `systemd` 自动重启加载新版本。指纹状态保存在
+由服务管理器（`systemd` 的 `Restart=always` 或 `procd` 的 `respawn`）
+自动重启加载新版本。指纹状态保存在
 `/var/lib/nodecook-agent/installed.sha256`。网络错误会写入日志并在下
 一次定时检查时重试，下载失败永远不会影响正在运行的 agent。
 

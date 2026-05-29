@@ -1,5 +1,6 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
+if ( set -o pipefail ) 2>/dev/null; then set -o pipefail; fi
 
 DOWNLOAD_BASE_URL="${NODECOOK_AGENT_DOWNLOAD_BASE_URL:-https://dl.nodecook.com}"
 BIN_NAME="nodecook-agent"
@@ -23,7 +24,6 @@ need_cmd() {
 }
 
 target() {
-  local arch
   arch="$(uname -m)"
   case "$arch" in
     x86_64|amd64) echo "x86_64-unknown-linux-musl" ;;
@@ -33,6 +33,24 @@ target() {
       exit 1
       ;;
   esac
+}
+
+short_sha() {
+  printf '%s' "$1" | cut -c1-12
+}
+
+# Restart the service through whichever supervisor currently manages it.
+restart_service() {
+  if command -v systemctl >/dev/null 2>&1 \
+    && systemctl is-active --quiet "$SERVICE_NAME"; then
+    systemctl restart "$SERVICE_NAME"
+    return 0
+  fi
+  if [ -x "/etc/init.d/${SERVICE_NAME}" ]; then
+    "/etc/init.d/${SERVICE_NAME}" restart
+    return 0
+  fi
+  return 1
 }
 
 main() {
@@ -47,7 +65,6 @@ main() {
     exit 1
   fi
 
-  local target_id asset url sha_url remote_sha local_sha tmp actual_sha
   target_id="$(target)"
   asset="${BIN_NAME}-${target_id}"
   url="${DOWNLOAD_BASE_URL%/}/${asset}.tar.gz"
@@ -65,7 +82,7 @@ main() {
   fi
 
   if [ "$remote_sha" = "$local_sha" ]; then
-    echo "Already up to date (sha ${remote_sha:0:12}...)."
+    echo "Already up to date (sha $(short_sha "$remote_sha")...)."
     exit 0
   fi
 
@@ -82,17 +99,20 @@ main() {
   fi
 
   tar -xzf "$tmp/${asset}.tar.gz" -C "$tmp"
-  install -m 0755 "$tmp/$asset/$BIN_NAME" "$INSTALL_DIR/$BIN_NAME"
+
+  # Atomic swap to avoid "Text file busy" while the old binary runs.
+  new_bin="${INSTALL_DIR}/.${BIN_NAME}.new.$$"
+  cp "$tmp/$asset/$BIN_NAME" "$new_bin"
+  chmod 0755 "$new_bin"
+  mv -f "$new_bin" "$INSTALL_DIR/$BIN_NAME"
 
   mkdir -p "$STATE_DIR"
   printf '%s\n' "$remote_sha" > "$STATE_FILE"
 
-  if command -v systemctl >/dev/null 2>&1 \
-    && systemctl is-active --quiet "$SERVICE_NAME"; then
-    systemctl restart "$SERVICE_NAME"
-    echo "NodeCook Agent upgraded (sha ${remote_sha:0:12}...) and service restarted."
+  if restart_service; then
+    echo "NodeCook Agent upgraded (sha $(short_sha "$remote_sha")...) and service restarted."
   else
-    echo "NodeCook Agent binary upgraded (sha ${remote_sha:0:12}...); restart the service manually to apply."
+    echo "NodeCook Agent binary upgraded (sha $(short_sha "$remote_sha")...); restart the service manually to apply."
   fi
 }
 
